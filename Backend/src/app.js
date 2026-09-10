@@ -1,5 +1,6 @@
 import express from "express";
 import authRoutes from "./routes/auth.routes.js";
+import errorMiddleware from "./middleware/error.middleware.js";
 
 const app = express();
 
@@ -13,5 +14,7 @@ app.get("/", (req, res) => {
         message: "WorkSphere API is running",
     });
 });
+
+app.use(errorMiddleware);
 
 export default app;
