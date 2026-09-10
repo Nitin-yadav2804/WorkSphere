@@ -93,10 +93,16 @@ export const getProfile = async (req, res) => {
             });
         }
 
-        res.status(200).json({
-            success: true,
-            user,
-        });
+        res.status(201).json({
+        success: true,
+        message: "User registered successfully",
+        user: {
+            id: user._id,
+            name: user.name,
+            email: user.email,
+            role: user.role,
+        },
+    });
     } catch (error) {
         res.status(500).json({
             success: false,
