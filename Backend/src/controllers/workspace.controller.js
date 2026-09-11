@@ -1,6 +1,7 @@
 import User from "../models/user.model.js";
 import Workspace from "../models/workspace.model.js";
 import AppError from "../utils/AppError.js";
+import createActivity from "../utils/createActivity.js";
 
 
 export const createWorkspace = async (req, res) => {
@@ -16,6 +17,13 @@ export const createWorkspace = async (req, res) => {
                 role: "manager",
             },
         ],
+    });
+
+    await createActivity({
+        action: "workspace_created",
+        description: `Created workspace "${workspace.name}"`,
+        user: req.user.userId,
+        workspace: workspace._id,
     });
 
     res.status(201).json({
@@ -84,6 +92,13 @@ export const updateWorkspace = async (req, res) => {
 
     await workspace.save();
 
+    await createActivity({
+        action: "workspace_updated",
+        description: `Updated workspace "${workspace.name}"`,
+        user: req.user.userId,
+        workspace: workspace._id,
+    });
+
     res.status(200).json({
         success: true,
         message: "Workspace updated successfully",
@@ -106,7 +121,16 @@ export const deleteWorkspace = async (req, res) => {
         );
     }
 
+    const workspaceName = workspace.name;
+
     await Workspace.findByIdAndDelete(workspaceId);
+
+    await createActivity({
+        action: "workspace_deleted",
+        description: `Deleted workspace "${workspaceName}"`,
+        user: req.user.userId,
+        workspace: workspace._id,
+    });
 
     res.status(200).json({
         success: true,
@@ -156,6 +180,13 @@ export const addMember = async (req, res) => {
     });
 
     await workspace.save();
+
+    await createActivity({
+        action: "member_added",
+        description: `Added ${user.name} to workspace`,
+        user: req.user.userId,
+        workspace: workspace._id,
+    });
 
     res.status(200).json({
         success: true,
@@ -224,6 +255,13 @@ export const removeMember = async (req, res) => {
 
     await workspace.save();
 
+    await createActivity({
+        action: "member_removed",
+        description: `Removed a member from workspace`,
+        user: req.user.userId,
+        workspace: workspace._id,
+    });
+
     res.status(200).json({
         success: true,
         message: "Member removed successfully",
@@ -259,6 +297,13 @@ export const updateMemberRole = async (req, res) => {
     member.role = role;
 
     await workspace.save();
+
+    await createActivity({
+        action: "member_role_updated",
+        description: `Updated a workspace member's role to "${role}"`,
+        user: req.user.userId,
+        workspace: workspace._id,
+    });
 
     res.status(200).json({
         success: true,

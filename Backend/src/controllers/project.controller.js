@@ -1,6 +1,7 @@
 import Project from "../models/project.model.js";
 import Workspace from "../models/workspace.model.js";
 import AppError from "../utils/AppError.js";
+import createActivity from "../utils/createActivity.js";
 
 export const createProject = async (req, res) => {
     const { workspaceId } = req.params;
@@ -25,6 +26,14 @@ export const createProject = async (req, res) => {
         createdBy: req.user.userId,
         startDate,
         dueDate,
+    });
+
+    await createActivity({
+        action: "project_created",
+        description: `Created project "${project.name}"`,
+        user: req.user.userId,
+        workspace: workspace._id,
+        project: project._id,
     });
 
     res.status(201).json({
@@ -139,6 +148,14 @@ export const updateProject = async (req, res) => {
 
     await project.save();
 
+    await createActivity({
+        action: "project_updated",
+        description: `Updated project "${project.name}"`,
+        user: req.user.userId,
+        workspace: workspace._id,
+        project: project._id,
+    });
+
     res.status(200).json({
         success: true,
         message: "Project updated successfully",
@@ -167,7 +184,17 @@ export const deleteProject = async (req, res) => {
         );
     }
 
+    const projectName = project.name;
+
     await Project.findByIdAndDelete(projectId);
+
+    await createActivity({
+        action: "project_deleted",
+        description: `Deleted project "${projectName}"`,
+        user: req.user.userId,
+        workspace: workspace._id,
+        project: project._id,
+    });
 
     res.status(200).json({
         success: true,

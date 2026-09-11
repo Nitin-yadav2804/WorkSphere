@@ -2,6 +2,7 @@ import Task from "../models/task.model.js";
 import Project from "../models/project.model.js";
 import Workspace from "../models/workspace.model.js";
 import AppError from "../utils/AppError.js";
+import createActivity from "../utils/createActivity.js";
 
 export const createTask = async (req, res) => {
     const { projectId } = req.params;
@@ -58,6 +59,15 @@ export const createTask = async (req, res) => {
         status,
         priority,
         dueDate,
+    });
+
+    await createActivity({
+        action: "task_created",
+        description: `Created task "${task.title}"`,
+        user: req.user.userId,
+        workspace: workspace._id,
+        project: project._id,
+        task: task._id,
     });
 
     res.status(201).json({
@@ -206,6 +216,15 @@ export const updateTask = async (req, res) => {
 
     await task.save();
 
+    await createActivity({
+        action: "task_updated",
+        description: `Updated task "${task.title}"`,
+        user: req.user.userId,
+        workspace: workspace._id,
+        project: project._id,
+        task: task._id,
+    });
+
     res.status(200).json({
         success: true,
         message: "Task updated successfully",
@@ -241,6 +260,15 @@ export const deleteTask = async (req, res) => {
     }
 
     await Task.findByIdAndDelete(taskId);
+
+    await createActivity({
+        action: "task_deleted",
+        description: `Deleted task "${task.title}"`,
+        user: req.user.userId,
+        workspace: workspace._id,
+        project: project._id,
+        task: task._id,
+    });
 
     res.status(200).json({
         success: true,
