@@ -3,7 +3,6 @@ import Workspace from "../models/workspace.model.js";
 import AppError from "../utils/AppError.js";
 import createActivity from "../utils/createActivity.js";
 
-
 export const createWorkspace = async (req, res) => {
     const { name, description } = req.body;
 
@@ -36,7 +35,7 @@ export const createWorkspace = async (req, res) => {
 export const getMyWorkspaces = async (req, res) => {
     const workspaces = await Workspace.find({
         "members.user": req.user.userId,
-    }).sort({ createdAt: -1 });
+    }).sort({ createdAt: 1 });
 
     res.status(200).json({
         success: true,
@@ -50,8 +49,9 @@ export const getWorkspace = async (req, res) => {
     const workspace = await Workspace.findOne({
         _id: workspaceId,
         "members.user": req.user.userId,
-    }).populate("owner", "name email")
-      .populate("members.user", "name email");
+    })
+        .populate("owner", "name email")
+        .populate("members.user", "name email");
 
     if (!workspace) {
         throw new AppError(
@@ -139,81 +139,81 @@ export const deleteWorkspace = async (req, res) => {
 };
 
 export const addMember = async (req, res) => {
-  const { workspaceId } = req.params;
-  const { email, role } = req.body;
+    const { workspaceId } = req.params;
+    const { email, role } = req.body;
 
-  const workspace = await Workspace.findById(
-    workspaceId
-  );
-
-  if (!workspace) {
-    throw new AppError(
-      "Workspace not found",
-      404
+    const workspace = await Workspace.findById(
+        workspaceId
     );
-  }
 
-  // Only workspace owner can add members
-  if (
-    String(workspace.owner) !==
-    String(req.user.userId)
-  ) {
-    throw new AppError(
-      "Only workspace owner can add members",
-      403
+    if (!workspace) {
+        throw new AppError(
+            "Workspace not found",
+            404
+        );
+    }
+
+    // Only workspace owner can add members
+    if (
+        String(workspace.owner) !==
+        String(req.user.userId)
+    ) {
+        throw new AppError(
+            "Only workspace owner can add members",
+            403
+        );
+    }
+
+    const user = await User.findOne({
+        email,
+    });
+
+    if (!user) {
+        throw new AppError(
+            "User not found. The user must have a WorkSphere account.",
+            404
+        );
+    }
+
+    const alreadyMember = workspace.members.some(
+        (member) =>
+            String(member.user) === String(user._id)
     );
-  }
 
-  const user = await User.findOne({
-    email,
-  });
+    if (alreadyMember) {
+        throw new AppError(
+            "User is already a member of this workspace",
+            400
+        );
+    }
 
-  if (!user) {
-    throw new AppError(
-      "User not found. The user must have a WorkSphere account.",
-      404
-    );
-  }
+    const newMember = {
+        user: user._id,
+        role: role || "member",
+    };
 
-  const alreadyMember = workspace.members.some(
-    (member) =>
-      String(member.user) === String(user._id)
-  );
+    workspace.members.push(newMember);
 
-  if (alreadyMember) {
-    throw new AppError(
-      "User is already a member of this workspace",
-      400
-    );
-  }
+    await workspace.save();
 
-  const newMember = {
-    user: user._id,
-    role: role || "member",
-  };
+    const addedMember =
+        workspace.members[
+            workspace.members.length - 1
+        ];
 
-  workspace.members.push(newMember);
-
-  await workspace.save();
-
-  const addedMember =
-    workspace.members[
-      workspace.members.length - 1
-    ];
-
-  res.status(201).json({
-    success: true,
-    message: "Member added successfully",
-    member: {
-      user: {
-        _id: user._id,
-        name: user.name,
-        email: user.email,
-      },
-      role: addedMember.role,
-      joinedAt: addedMember.joinedAt,
-    },
-  });
+    res.status(201).json({
+        success: true,
+        message: "Member added successfully",
+        member: {
+            user: {
+                _id: user._id,
+                name: user.name,
+                email: user.email,
+            },
+            role: addedMember.role,
+            joinedAt: addedMember.joinedAt,
+        },
+    });
 };
 
 export const getWorkspaceMembers = async (req, res) => {
@@ -222,7 +222,10 @@ export const getWorkspaceMembers = async (req, res) => {
     const workspace = await Workspace.findOne({
         _id: workspaceId,
         "members.user": req.user.userId,
-    }).populate("members.user", "name email role");
+    }).populate(
+        "members.user",
+        "name email role"
+    );
 
     if (!workspace) {
         throw new AppError(
@@ -260,7 +263,8 @@ export const removeMember = async (req, res) => {
     }
 
     const memberExists = workspace.members.some(
-        (member) => member.user.toString() === userId
+        (member) =>
+            member.user.toString() === userId
     );
 
     if (!memberExists) {
@@ -271,7 +275,8 @@ export const removeMember = async (req, res) => {
     }
 
     workspace.members = workspace.members.filter(
-        (member) => member.user.toString() !== userId
+        (member) =>
+            member.user.toString() !== userId
     );
 
     await workspace.save();
@@ -288,6 +293,7 @@ export const removeMember = async (req, res) => {
         message: "Member removed successfully",
     });
 };
+
 export const updateMemberRole = async (req, res) => {
     const { workspaceId, userId } = req.params;
     const { role } = req.body;
@@ -305,7 +311,8 @@ export const updateMemberRole = async (req, res) => {
     }
 
     const member = workspace.members.find(
-        (member) => member.user.toString() === userId
+        (member) =>
+            member.user.toString() === userId
     );
 
     if (!member) {
