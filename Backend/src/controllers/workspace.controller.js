@@ -139,60 +139,81 @@ export const deleteWorkspace = async (req, res) => {
 };
 
 export const addMember = async (req, res) => {
-    const { workspaceId } = req.params;
-    const { email } = req.body;
+  const { workspaceId } = req.params;
+  const { email, role } = req.body;
 
-    const workspace = await Workspace.findOne({
-        _id: workspaceId,
-        owner: req.user.userId,
-    });
+  const workspace = await Workspace.findById(
+    workspaceId
+  );
 
-    if (!workspace) {
-        throw new AppError(
-            "Workspace not found or you are not the owner",
-            404
-        );
-    }
-
-    const user = await User.findOne({ email });
-
-    if (!user) {
-        throw new AppError(
-            "User with this email does not exist",
-            404
-        );
-    }
-
-    const alreadyMember = workspace.members.some(
-        (member) => member.user.toString() === user._id.toString()
+  if (!workspace) {
+    throw new AppError(
+      "Workspace not found",
+      404
     );
+  }
 
-    if (alreadyMember) {
-        throw new AppError(
-            "User is already a member of this workspace",
-            409
-        );
-    }
+  // Only workspace owner can add members
+  if (
+    String(workspace.owner) !==
+    String(req.user.userId)
+  ) {
+    throw new AppError(
+      "Only workspace owner can add members",
+      403
+    );
+  }
 
-    workspace.members.push({
-        user: user._id,
-        role: "member",
-    });
+  const user = await User.findOne({
+    email,
+  });
 
-    await workspace.save();
+  if (!user) {
+    throw new AppError(
+      "User not found. The user must have a WorkSphere account.",
+      404
+    );
+  }
 
-    await createActivity({
-        action: "member_added",
-        description: `Added ${user.name} to workspace`,
-        user: req.user.userId,
-        workspace: workspace._id,
-    });
+  const alreadyMember = workspace.members.some(
+    (member) =>
+      String(member.user) === String(user._id)
+  );
 
-    res.status(200).json({
-        success: true,
-        message: "Member added successfully",
-        workspace,
-    });
+  if (alreadyMember) {
+    throw new AppError(
+      "User is already a member of this workspace",
+      400
+    );
+  }
+
+  const newMember = {
+    user: user._id,
+    role: role || "member",
+  };
+
+  workspace.members.push(newMember);
+
+  await workspace.save();
+
+  const addedMember =
+    workspace.members[
+      workspace.members.length - 1
+    ];
+
+  res.status(201).json({
+    success: true,
+    message: "Member added successfully",
+    member: {
+      user: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+      },
+      role: addedMember.role,
+      joinedAt: addedMember.joinedAt,
+    },
+  });
 };
 
 export const getWorkspaceMembers = async (req, res) => {
