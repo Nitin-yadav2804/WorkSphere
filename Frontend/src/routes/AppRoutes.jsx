@@ -3,6 +3,11 @@ import Login from "../pages/Login";
 import Register from "../pages/Register";
 import Dashboard from "../pages/Dashboard";
 import ProtectedRoute from "./ProtectedRoute";
+import DashboardLayout from "../layouts/DashboardLayout";
+import Workspaces from "../pages/Workspaces";
+import WorkspaceDetails from "../pages/WorkspaceDetails";
+import ProjectDetails from "../pages/ProjectDetails";
+import TaskDetails from "../pages/TaskDetails";
 
 function AppRoutes() {
   return (
@@ -15,7 +20,13 @@ function AppRoutes() {
 
         {/* Protected routes */}
         <Route element={<ProtectedRoute />}>
-          <Route path="/dashboard" element={<Dashboard />} />
+          <Route element={<DashboardLayout />}>
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/workspaces" element={<Workspaces />} />
+            <Route path="/workspaces/:workspaceId" element={<WorkspaceDetails />} />
+            <Route path="/projects/:projectId" element={<ProjectDetails />} />
+            <Route path="/tasks/:taskId" element={<TaskDetails />} />
+          </Route>
         </Route>
       </Routes>
     </BrowserRouter>

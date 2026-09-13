@@ -37,12 +37,9 @@ function Login() {
 
             const { token, user } = response.data;
 
-            dispatch(
-            setCredentials({
-                token,
-                user,
-            })
-            );
+            localStorage.setItem("token", token);
+
+            dispatch(setCredentials({ token, user }));
 
             navigate("/dashboard");
         } catch (error) {
