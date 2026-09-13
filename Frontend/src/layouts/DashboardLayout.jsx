@@ -1,19 +1,21 @@
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
+
 import { useDispatch, useSelector } from "react-redux";
+
 import {
   LayoutDashboard,
   Briefcase,
-  CheckSquare,
   Activity,
   Settings,
   LogOut,
-  Users,
 } from "lucide-react";
+
 import { logout } from "../store/authSlice";
 
 function DashboardLayout() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+
   const user = useSelector((state) => state.auth.user);
 
   const handleLogout = () => {
@@ -31,16 +33,6 @@ function DashboardLayout() {
       name: "Workspaces",
       path: "/workspaces",
       icon: Briefcase,
-    },
-    {
-      name: "Projects",
-      path: "/projects",
-      icon: CheckSquare,
-    },
-    {
-      name: "Team",
-      path: "/team",
-      icon: Users,
     },
     {
       name: "Activity",
@@ -68,7 +60,10 @@ function DashboardLayout() {
             <h1 className="text-lg font-bold tracking-tight text-slate-900">
               WorkSphere
             </h1>
-            <p className="text-xs text-slate-400">Work management</p>
+
+            <p className="text-xs text-slate-400">
+              Work management
+            </p>
           </div>
         </div>
 

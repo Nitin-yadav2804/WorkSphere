@@ -1,13 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { X } from "lucide-react";
 import { toast } from "sonner";
-import { createTask } from "../services/taskService";
-import { getWorkspaceMembers } from "../services/workspaceService";
+import { updateTask } from "../services/taskService";
 
-const createTaskSchema = z.object({
+const editTaskSchema = z.object({
   title: z
     .string()
     .min(2, "Task title must be at least 2 characters")
@@ -18,8 +17,6 @@ const createTaskSchema = z.object({
     .max(1000, "Description cannot exceed 1000 characters")
     .optional(),
 
-  assignedTo: z.string().optional(),
-
   status: z.enum(["todo", "in-progress", "completed"]),
 
   priority: z.enum(["low", "medium", "high", "urgent"]),
@@ -27,25 +24,17 @@ const createTaskSchema = z.object({
   dueDate: z.string().optional(),
 });
 
-function CreateTaskModal({
-  projectId,
-  workspaceId,
-  onClose,
-  onCreated,
-}) {
-  const [members, setMembers] = useState([]);
-  const [membersLoading, setMembersLoading] = useState(true);
-
+function EditTaskModal({ task, onClose, onUpdated }) {
   const {
     register,
     handleSubmit,
+    reset,
     formState: { errors, isSubmitting },
   } = useForm({
-    resolver: zodResolver(createTaskSchema),
+    resolver: zodResolver(editTaskSchema),
     defaultValues: {
       title: "",
       description: "",
-      assignedTo: "",
       status: "todo",
       priority: "medium",
       dueDate: "",
@@ -53,56 +42,40 @@ function CreateTaskModal({
   });
 
   useEffect(() => {
-    const fetchMembers = async () => {
-      try {
-        const response = await getWorkspaceMembers(workspaceId);
-
-        setMembers(response.members || []);
-      } catch (error) {
-        console.error(
-          "Failed to fetch workspace members:",
-          error.response?.data || error.message
-        );
-
-        toast.error(
-          error.response?.data?.message ||
-            "Failed to load workspace members."
-        );
-      } finally {
-        setMembersLoading(false);
-      }
-    };
-
-    fetchMembers();
-  }, [workspaceId]);
+    reset({
+      title: task.title || "",
+      description: task.description || "",
+      status: task.status || "todo",
+      priority: task.priority || "medium",
+      dueDate: task.dueDate
+        ? new Date(task.dueDate).toISOString().slice(0, 16)
+        : "",
+    });
+  }, [task, reset]);
 
   const onSubmit = async (data) => {
     try {
       const taskData = {
         ...data,
-
-        assignedTo: data.assignedTo || undefined,
-
         dueDate: data.dueDate
           ? new Date(data.dueDate).toISOString()
           : undefined,
       };
 
-      const response = await createTask(projectId, taskData);
+      const response = await updateTask(task._id, taskData);
 
-      toast.success("Task created successfully");
+      toast.success("Task updated successfully");
 
-      onCreated(response.task);
+      onUpdated(response.task);
       onClose();
     } catch (error) {
       console.error(
-        "Failed to create task:",
+        "Failed to update task:",
         error.response?.data || error.message
       );
 
       toast.error(
-        error.response?.data?.message ||
-          "Failed to create task."
+        error.response?.data?.message || "Failed to update task."
       );
     }
   };
@@ -114,11 +87,11 @@ function CreateTaskModal({
         <div className="flex items-center justify-between border-b border-slate-100 px-6 py-5">
           <div>
             <h2 className="text-xl font-bold text-slate-900">
-              Create task
+              Edit task
             </h2>
 
             <p className="mt-1 text-sm text-slate-500">
-              Add a new task to this project.
+              Update task information.
             </p>
           </div>
 
@@ -134,7 +107,7 @@ function CreateTaskModal({
         {/* Form */}
         <form
           onSubmit={handleSubmit(onSubmit)}
-          className="max-h-[80vh] space-y-5 overflow-y-auto p-6"
+          className="space-y-5 p-6"
         >
           {/* Title */}
           <div>
@@ -145,7 +118,6 @@ function CreateTaskModal({
             <input
               type="text"
               {...register("title")}
-              placeholder="e.g. Design login page"
               className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
             />
 
@@ -165,7 +137,6 @@ function CreateTaskModal({
             <textarea
               rows={4}
               {...register("description")}
-              placeholder="Describe what needs to be done..."
               className="w-full resize-none rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
             />
 
@@ -174,40 +145,6 @@ function CreateTaskModal({
                 {errors.description.message}
               </p>
             )}
-          </div>
-
-          {/* Assign To */}
-          <div>
-            <label className="mb-2 block text-sm font-semibold text-slate-700">
-              Assign to
-            </label>
-
-            <select
-              {...register("assignedTo")}
-              disabled={membersLoading}
-              className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 disabled:cursor-not-allowed disabled:bg-slate-50"
-            >
-              <option value="">
-                {membersLoading
-                  ? "Loading members..."
-                  : "Unassigned"}
-              </option>
-
-              {!membersLoading &&
-                members.map((member) => (
-                  <option
-                    key={member.user?._id || member._id}
-                    value={member.user?._id || member._id}
-                  >
-                    {member.user?.name || member.name}
-                    {member.user?.email
-                      ? ` (${member.user.email})`
-                      : member.email
-                      ? ` (${member.email})`
-                      : ""}
-                  </option>
-                ))}
-            </select>
           </div>
 
           {/* Status + Priority */}
@@ -222,12 +159,8 @@ function CreateTaskModal({
                 className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
               >
                 <option value="todo">To do</option>
-                <option value="in-progress">
-                  In progress
-                </option>
-                <option value="completed">
-                  Completed
-                </option>
+                <option value="in-progress">In progress</option>
+                <option value="completed">Completed</option>
               </select>
             </div>
 
@@ -282,9 +215,7 @@ function CreateTaskModal({
               disabled={isSubmitting}
               className="rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {isSubmitting
-                ? "Creating..."
-                : "Create task"}
+              {isSubmitting ? "Saving..." : "Save changes"}
             </button>
           </div>
         </form>
@@ -293,4 +224,4 @@ function CreateTaskModal({
   );
 }
 
-export default CreateTaskModal;
+export default EditTaskModal;

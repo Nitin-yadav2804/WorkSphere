@@ -1,12 +1,18 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Mail, Lock, ArrowRight } from "lucide-react";
+import {
+  Mail,
+  Lock,
+  ArrowRight,
+  Eye,
+  EyeOff,
+} from "lucide-react";
 import api from "../services/api";
 import { useDispatch } from "react-redux";
 import { setCredentials } from "../store/authSlice";
-import { useNavigate } from "react-router-dom";
 
 const loginSchema = z.object({
   email: z
@@ -21,40 +27,64 @@ const loginSchema = z.object({
 });
 
 function Login() {
-    const dispatch = useDispatch();
-    const navigate = useNavigate();
-    const {
-        register,
-        handleSubmit,
-        formState: { errors },
-    } = useForm({
-        resolver: zodResolver(loginSchema),
-    });
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
 
-    const onSubmit = async (data) => {
-        try {
-            const response = await api.post("/auth/login", data);
+  const [showPassword, setShowPassword] = useState(false);
 
-            const { token, user } = response.data;
+  const {
+    register,
+    handleSubmit,
+    setError,
+    formState: { errors },
+  } = useForm({
+    resolver: zodResolver(loginSchema),
+  });
 
-            localStorage.setItem("token", token);
+  const onSubmit = async (data) => {
+    try {
+      const response = await api.post("/auth/login", data);
 
-            dispatch(setCredentials({ token, user }));
+      const { token, user } = response.data;
 
-            navigate("/dashboard");
-        } catch (error) {
-            console.error("Login failed:", error.response?.data || error.message);
-        }
-        };
+      localStorage.setItem("token", token);
+
+      dispatch(setCredentials({ token, user }));
+
+      navigate("/dashboard");
+    } catch (error) {
+      console.error(
+        "Login failed:",
+        error.response?.data || error.message
+      );
+
+      const message = error.response?.data?.message;
+
+      if (message === "Email not found") {
+        setError("email", {
+          type: "server",
+          message: "Email not found.",
+        });
+      } else if (message === "Incorrect password") {
+        setError("password", {
+          type: "server",
+          message: "Incorrect password.",
+        });
+      } else {
+        setError("email", {
+          type: "server",
+          message: message || "Login failed. Please try again.",
+        });
+      }
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex">
+    <div className="flex min-h-screen bg-slate-50">
       <div className="relative hidden overflow-hidden bg-blue-600 lg:flex lg:w-1/2">
         {/* Decorative shapes */}
         <div className="absolute -left-24 -top-24 h-72 w-72 rounded-full bg-blue-500/40" />
-
         <div className="absolute -bottom-32 -right-20 h-96 w-96 rounded-full bg-blue-700/40" />
-
         <div className="absolute left-1/3 top-1/2 h-40 w-40 rounded-full bg-blue-400/20" />
 
         <div className="relative z-10 flex flex-col justify-center px-16 xl:px-24">
@@ -79,8 +109,8 @@ function Login() {
 
           {/* Description */}
           <p className="mt-6 max-w-md text-lg leading-8 text-blue-100">
-            Bring your projects, tasks, teams and communication together in
-            one powerful workspace.
+            Bring your projects, tasks, teams and communication
+            together in one powerful workspace.
           </p>
 
           {/* Features */}
@@ -89,7 +119,6 @@ function Login() {
               <p className="text-2xl font-bold text-white">
                 Projects
               </p>
-
               <p>Organized</p>
             </div>
 
@@ -99,7 +128,6 @@ function Login() {
               <p className="text-2xl font-bold text-white">
                 Teams
               </p>
-
               <p>Connected</p>
             </div>
 
@@ -109,16 +137,14 @@ function Login() {
               <p className="text-2xl font-bold text-white">
                 Tasks
               </p>
-
               <p>Tracked</p>
             </div>
           </div>
         </div>
       </div>
 
-      {/* =========================
-          LOGIN SECTION
-      ========================== */}
+      {/* LOGIN SECTION */}
+
       <div className="flex w-full items-center justify-center px-6 py-12 lg:w-1/2">
         <div className="w-full max-w-md">
           {/* Mobile Logo */}
@@ -147,9 +173,8 @@ function Login() {
             </p>
           </div>
 
-          {/* =========================
-              FORM
-          ========================== */}
+          {/*FORM*/}
+
           <form
             onSubmit={handleSubmit(onSubmit)}
             className="space-y-5"
@@ -215,15 +240,38 @@ function Login() {
 
                 <input
                   id="password"
-                  type="password"
+                  type={
+                    showPassword ? "text" : "password"
+                  }
                   {...register("password")}
                   placeholder="Enter your password"
-                  className={`w-full rounded-xl border bg-white py-3.5 pl-11 pr-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:ring-4 focus:ring-blue-500/10 ${
+                  className={`w-full rounded-xl border bg-white py-3.5 pl-11 pr-12 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:ring-4 focus:ring-blue-500/10 ${
                     errors.password
                       ? "border-red-400 focus:border-red-500"
                       : "border-slate-200 focus:border-blue-500"
                   }`}
                 />
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    setShowPassword(
+                      (current) => !current
+                    )
+                  }
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 transition hover:text-slate-600"
+                  aria-label={
+                    showPassword
+                      ? "Hide password"
+                      : "Show password"
+                  }
+                >
+                  {showPassword ? (
+                    <EyeOff size={19} />
+                  ) : (
+                    <Eye size={19} />
+                  )}
+                </button>
               </div>
 
               {errors.password && (

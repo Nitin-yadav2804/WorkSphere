@@ -256,13 +256,14 @@ function ProjectDetails() {
       </div>
       {showCreateTaskModal && (
         <CreateTaskModal
-            projectId={projectId}
-            onClose={() => setShowCreateTaskModal(false)}
-            onCreated={(task) => {
+          projectId={projectId}
+          workspaceId={project.workspace._id}
+          onClose={() => setShowCreateTaskModal(false)}
+          onCreated={(task) => {
             setTasks((current) => [task, ...current]);
-            }}
+          }}
         />
-        )}
+      )}
     </div>
   );
 }

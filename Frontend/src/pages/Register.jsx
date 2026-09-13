@@ -1,8 +1,16 @@
 import { Link, useNavigate } from "react-router-dom";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { User, Mail, Lock, ArrowRight } from "lucide-react";
+import {
+  User,
+  Mail,
+  Lock,
+  ArrowRight,
+  Eye,
+  EyeOff,
+} from "lucide-react";
 import api from "../services/api";
 
 const registerSchema = z
@@ -25,13 +33,20 @@ const registerSchema = z
       .string()
       .min(1, "Please confirm your password"),
   })
-  .refine((data) => data.password === data.confirmPassword, {
-    message: "Passwords do not match",
-    path: ["confirmPassword"],
-  });
+  .refine(
+    (data) => data.password === data.confirmPassword,
+    {
+      message: "Passwords do not match",
+      path: ["confirmPassword"],
+    }
+  );
 
 function Register() {
   const navigate = useNavigate();
+
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] =
+    useState(false);
 
   const {
     register,
@@ -59,11 +74,13 @@ function Register() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex">
+    <div className="flex min-h-screen bg-slate-50">
       {/* Left section */}
       <div className="relative hidden overflow-hidden bg-blue-600 lg:flex lg:w-1/2">
         <div className="absolute -left-24 -top-24 h-72 w-72 rounded-full bg-blue-500/40" />
+
         <div className="absolute -bottom-32 -right-20 h-96 w-96 rounded-full bg-blue-700/40" />
+
         <div className="absolute left-1/3 top-1/2 h-40 w-40 rounded-full bg-blue-400/20" />
 
         <div className="relative z-10 flex flex-col justify-center px-16 xl:px-24">
@@ -79,31 +96,39 @@ function Register() {
 
           <h1 className="max-w-lg text-5xl font-bold leading-tight text-white">
             Build better.
-            <span className="block text-blue-100">Work together.</span>
+            <span className="block text-blue-100">
+              Work together.
+            </span>
           </h1>
 
           <p className="mt-6 max-w-md text-lg leading-8 text-blue-100">
-            Create your workspace and bring projects, tasks and your team
-            together in one place.
+            Create your workspace and bring projects, tasks and
+            your team together in one place.
           </p>
 
           <div className="mt-10 flex items-center gap-8 text-sm text-blue-100">
             <div>
-              <p className="text-2xl font-bold text-white">Projects</p>
+              <p className="text-2xl font-bold text-white">
+                Projects
+              </p>
               <p>Organized</p>
             </div>
 
             <div className="h-10 w-px bg-blue-400" />
 
             <div>
-              <p className="text-2xl font-bold text-white">Teams</p>
+              <p className="text-2xl font-bold text-white">
+                Teams
+              </p>
               <p>Connected</p>
             </div>
 
             <div className="h-10 w-px bg-blue-400" />
 
             <div>
-              <p className="text-2xl font-bold text-white">Tasks</p>
+              <p className="text-2xl font-bold text-white">
+                Tasks
+              </p>
               <p>Tracked</p>
             </div>
           </div>
@@ -113,6 +138,7 @@ function Register() {
       {/* Right section */}
       <div className="flex w-full items-center justify-center px-6 py-12 lg:w-1/2">
         <div className="w-full max-w-md">
+          {/* Mobile Logo */}
           <div className="mb-10 flex items-center justify-center gap-3 lg:hidden">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600 text-lg font-bold text-white shadow-md">
               W
@@ -137,7 +163,10 @@ function Register() {
             </p>
           </div>
 
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+          <form
+            onSubmit={handleSubmit(onSubmit)}
+            className="space-y-5"
+          >
             {/* Name */}
             <div>
               <label
@@ -225,15 +254,38 @@ function Register() {
 
                 <input
                   id="password"
-                  type="password"
+                  type={
+                    showPassword ? "text" : "password"
+                  }
                   {...register("password")}
                   placeholder="Create a password"
-                  className={`w-full rounded-xl border bg-white py-3.5 pl-11 pr-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:ring-4 focus:ring-blue-500/10 ${
+                  className={`w-full rounded-xl border bg-white py-3.5 pl-11 pr-12 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:ring-4 focus:ring-blue-500/10 ${
                     errors.password
                       ? "border-red-400 focus:border-red-500"
                       : "border-slate-200 focus:border-blue-500"
                   }`}
                 />
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    setShowPassword(
+                      (current) => !current
+                    )
+                  }
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 transition hover:text-slate-600"
+                  aria-label={
+                    showPassword
+                      ? "Hide password"
+                      : "Show password"
+                  }
+                >
+                  {showPassword ? (
+                    <EyeOff size={19} />
+                  ) : (
+                    <Eye size={19} />
+                  )}
+                </button>
               </div>
 
               {errors.password && (
@@ -260,15 +312,40 @@ function Register() {
 
                 <input
                   id="confirmPassword"
-                  type="password"
+                  type={
+                    showConfirmPassword
+                      ? "text"
+                      : "password"
+                  }
                   {...register("confirmPassword")}
                   placeholder="Confirm your password"
-                  className={`w-full rounded-xl border bg-white py-3.5 pl-11 pr-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:ring-4 focus:ring-blue-500/10 ${
+                  className={`w-full rounded-xl border bg-white py-3.5 pl-11 pr-12 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:ring-4 focus:ring-blue-500/10 ${
                     errors.confirmPassword
                       ? "border-red-400 focus:border-red-500"
                       : "border-slate-200 focus:border-blue-500"
                   }`}
                 />
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    setShowConfirmPassword(
+                      (current) => !current
+                    )
+                  }
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 transition hover:text-slate-600"
+                  aria-label={
+                    showConfirmPassword
+                      ? "Hide password"
+                      : "Show password"
+                  }
+                >
+                  {showConfirmPassword ? (
+                    <EyeOff size={19} />
+                  ) : (
+                    <Eye size={19} />
+                  )}
+                </button>
               </div>
 
               {errors.confirmPassword && (
@@ -278,6 +355,7 @@ function Register() {
               )}
             </div>
 
+            {/* Create account */}
             <button
               type="submit"
               className="group flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3.5 text-sm font-semibold text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700 hover:shadow-blue-600/30 active:scale-[0.99]"
