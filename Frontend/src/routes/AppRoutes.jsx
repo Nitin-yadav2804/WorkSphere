@@ -10,6 +10,7 @@ import Workspaces from "../pages/Workspaces";
 import WorkspaceDetails from "../pages/WorkspaceDetails";
 import ProjectDetails from "../pages/ProjectDetails";
 import TaskDetails from "../pages/TaskDetails";
+import Activity from "../pages/Activity";
 
 function AppRoutes() {
   return (
@@ -44,6 +45,7 @@ function AppRoutes() {
               path="/tasks/:taskId"
               element={<TaskDetails />}
             />
+            <Route path="/activity" element={<Activity />} />
           </Route>
         </Route>
       </Routes>
