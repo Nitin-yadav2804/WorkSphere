@@ -32,7 +32,7 @@ export const loginUser = async (req, res) => {
     const user = await User.findOne({ email });
 
     if (!user) {
-        throw new AppError("User not found", 404);
+        throw new AppError("Email not found", 404);
     }
 
     const isPasswordCorrect = await bcrypt.compare(
@@ -41,7 +41,7 @@ export const loginUser = async (req, res) => {
     );
 
     if (!isPasswordCorrect) {
-        throw new AppError("Invalid credentials", 401);
+        throw new AppError("Incorrect password", 401);
     }
 
     const token = jwt.sign(
@@ -69,7 +69,9 @@ export const loginUser = async (req, res) => {
 };
 
 export const getProfile = async (req, res) => {
-    const user = await User.findById(req.user.userId).select("-password");
+    const user = await User.findById(
+        req.user.userId
+    ).select("-password");
 
     if (!user) {
         throw new AppError("User not found", 404);
