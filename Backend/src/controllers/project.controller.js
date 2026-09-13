@@ -61,6 +61,7 @@ export const getWorkspaceProjects = async (req, res) => {
         workspace: workspaceId,
     })
         .populate("createdBy", "name email")
+        .populate("workspace", "name")
         .sort({ createdAt: -1 });
 
     res.status(200).json({
