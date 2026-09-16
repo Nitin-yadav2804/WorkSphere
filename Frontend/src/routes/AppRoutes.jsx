@@ -11,6 +11,7 @@ import WorkspaceDetails from "../pages/WorkspaceDetails";
 import ProjectDetails from "../pages/ProjectDetails";
 import TaskDetails from "../pages/TaskDetails";
 import Activity from "../pages/Activity";
+import Settings from "../pages/Settings";
 
 function AppRoutes() {
   return (
@@ -46,6 +47,7 @@ function AppRoutes() {
               element={<TaskDetails />}
             />
             <Route path="/activity" element={<Activity />} />
+            <Route path="/settings" element={<Settings />} />
           </Route>
         </Route>
       </Routes>
