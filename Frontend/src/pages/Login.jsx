@@ -281,22 +281,6 @@ function Login() {
               )}
             </div>
 
-            {/* Remember Me */}
-            <div className="flex items-center gap-2">
-              <input
-                id="remember"
-                type="checkbox"
-                className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-              />
-
-              <label
-                htmlFor="remember"
-                className="text-sm text-slate-600"
-              >
-                Remember me
-              </label>
-            </div>
-
             {/* Login Button */}
             <button
               type="submit"
