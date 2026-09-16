@@ -12,20 +12,27 @@ import {
   Shield,
   X,
   Check,
+  Pencil,
+  AlertTriangle,
+  Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
-
 import {
   getWorkspace,
   getWorkspaceMembers,
   removeWorkspaceMember,
   updateWorkspaceMemberRole,
+  updateWorkspace,
+  deleteWorkspace,
 } from "../services/workspaceService";
-
-import { getWorkspaceProjects } from "../services/projectService";
-
+import {
+  getWorkspaceProjects,
+  deleteProject,
+} from "../services/projectService";
 import CreateProjectModal from "../components/CreateProjectModal";
 import AddMemberModal from "../components/AddMemberModal";
+import EditWorkspaceModal from "../components/EditWorkspaceModal";
+import EditProjectModal from "../components/EditProjectModal";
 
 function WorkspaceDetails() {
   const { workspaceId } = useParams();
@@ -33,12 +40,11 @@ function WorkspaceDetails() {
 
   const [workspace, setWorkspace] = useState(null);
   const [projects, setProjects] = useState([]);
-
   const [loading, setLoading] = useState(true);
   const [loadingMembers, setLoadingMembers] = useState(false);
   const [error, setError] = useState("");
 
-  const [activeTab, setActiveTab] = useState("members");
+  const [activeTab, setActiveTab] = useState("projects");
 
   const [showCreateProjectModal, setShowCreateProjectModal] =
     useState(false);
@@ -46,23 +52,43 @@ function WorkspaceDetails() {
   const [showAddMemberModal, setShowAddMemberModal] =
     useState(false);
 
+  const [showEditWorkspaceModal, setShowEditWorkspaceModal] =
+    useState(false);
+
+  const [showDeleteWorkspaceModal, setShowDeleteWorkspaceModal] =
+    useState(false);
+
+  const [deletingWorkspace, setDeletingWorkspace] = useState(false);
+
   const [openMenu, setOpenMenu] = useState(null);
 
   const [showRoleModal, setShowRoleModal] = useState(false);
   const [selectedMember, setSelectedMember] = useState(null);
   const [selectedRole, setSelectedRole] = useState("member");
   const [updatingRole, setUpdatingRole] = useState(false);
-
   const [removingMember, setRemovingMember] = useState(null);
 
-  // --------------------------------------------------
-  // Fetch workspace + projects
-  // --------------------------------------------------
+  const [showEditProjectModal, setShowEditProjectModal] =
+    useState(false);
+
+  const [selectedProject, setSelectedProject] = useState(null);
+
+  const [showDeleteProjectModal, setShowDeleteProjectModal] =
+    useState(false);
+
+  const [projectToDelete, setProjectToDelete] = useState(null);
+
+  const [deletingProject, setDeletingProject] = useState(false);
 
   const fetchWorkspace = async () => {
     try {
       setLoading(true);
       setError("");
+
+      if (!workspaceId) {
+        setError("Workspace ID is missing.");
+        return;
+      }
 
       const response = await getWorkspace(workspaceId);
 
@@ -71,7 +97,16 @@ function WorkspaceDetails() {
       const projectsResponse =
         await getWorkspaceProjects(workspaceId);
 
-      setProjects(projectsResponse.projects || []);
+      const fetchedProjects =
+        projectsResponse.projects || [];
+
+      setProjects(
+        [...fetchedProjects].sort(
+          (a, b) =>
+            new Date(a.createdAt) -
+            new Date(b.createdAt)
+        )
+      );
     } catch (error) {
       console.error(
         "Failed to fetch workspace:",
@@ -91,13 +126,14 @@ function WorkspaceDetails() {
     fetchWorkspace();
   }, [workspaceId]);
 
-  // --------------------------------------------------
-  // Fetch members
-  // --------------------------------------------------
-
   const fetchMembers = async () => {
     try {
       setLoadingMembers(true);
+
+      if (!workspaceId) {
+        toast.error("Workspace ID is missing.");
+        return;
+      }
 
       const response =
         await getWorkspaceMembers(workspaceId);
@@ -127,14 +163,51 @@ function WorkspaceDetails() {
     }
   };
 
-  // --------------------------------------------------
-  // Change role
-  // --------------------------------------------------
+  const handleWorkspaceUpdated = (updatedWorkspace) => {
+    setWorkspace((current) => ({
+      ...current,
+      ...updatedWorkspace,
+    }));
+
+    setShowEditWorkspaceModal(false);
+
+    toast.success("Workspace updated successfully.");
+  };
+
+  const handleDeleteWorkspace = async () => {
+    if (!workspaceId) {
+      toast.error("Workspace ID is missing.");
+      return;
+    }
+
+    try {
+      setDeletingWorkspace(true);
+
+      await deleteWorkspace(workspaceId);
+
+      toast.success("Workspace deleted successfully.");
+
+      navigate("/workspaces", {
+        replace: true,
+      });
+    } catch (error) {
+      console.error(
+        "Failed to delete workspace:",
+        error.response?.data || error.message
+      );
+
+      toast.error(
+        error.response?.data?.message ||
+          "Failed to delete workspace."
+      );
+
+      setDeletingWorkspace(false);
+    }
+  };
 
   const handleOpenRoleModal = (member) => {
     setSelectedMember(member);
     setSelectedRole(member.role || "member");
-
     setOpenMenu(null);
     setShowRoleModal(true);
   };
@@ -142,6 +215,11 @@ function WorkspaceDetails() {
   const handleChangeRole = async () => {
     if (!selectedMember?.user?._id) {
       toast.error("Unable to update this member.");
+      return;
+    }
+
+    if (!workspaceId) {
+      toast.error("Workspace ID is missing.");
       return;
     }
 
@@ -179,10 +257,6 @@ function WorkspaceDetails() {
     }
   };
 
-  // --------------------------------------------------
-  // Remove member
-  // --------------------------------------------------
-
   const handleRemoveMember = async (member) => {
     const user = member?.user;
 
@@ -191,7 +265,11 @@ function WorkspaceDetails() {
       return;
     }
 
-    // Always close menu first
+    if (!workspaceId) {
+      toast.error("Workspace ID is missing.");
+      return;
+    }
+
     setOpenMenu(null);
 
     const confirmed = window.confirm(
@@ -232,9 +310,87 @@ function WorkspaceDetails() {
     }
   };
 
-  // --------------------------------------------------
-  // Role helpers
-  // --------------------------------------------------
+  const handleOpenEditProject = (event, project) => {
+    event.stopPropagation();
+
+    setOpenMenu(null);
+    setSelectedProject(project);
+    setShowEditProjectModal(true);
+  };
+
+  const handleProjectUpdated = (updatedProject) => {
+    setProjects((current) =>
+      current.map((project) =>
+        String(project._id) ===
+        String(updatedProject._id)
+          ? {
+              ...project,
+              ...updatedProject,
+            }
+          : project
+      )
+    );
+
+    setSelectedProject(null);
+    setShowEditProjectModal(false);
+
+    toast.success("Project updated successfully.");
+  };
+
+  const handleOpenDeleteProject = (event, project) => {
+    event.stopPropagation();
+
+    setOpenMenu(null);
+    setProjectToDelete(project);
+    setShowDeleteProjectModal(true);
+  };
+
+  const handleDeleteProject = async () => {
+    if (!projectToDelete?._id) {
+      toast.error("Unable to delete this project.");
+      return;
+    }
+
+    try {
+      setDeletingProject(true);
+
+      await deleteProject(projectToDelete._id);
+
+      setProjects((current) =>
+        current.filter(
+          (project) =>
+            String(project._id) !==
+            String(projectToDelete._id)
+        )
+      );
+
+      toast.success("Project deleted successfully.");
+
+      setShowDeleteProjectModal(false);
+      setProjectToDelete(null);
+    } catch (error) {
+      console.error(
+        "Failed to delete project:",
+        error.response?.data || error.message
+      );
+
+      toast.error(
+        error.response?.data?.message ||
+          "Failed to delete project."
+      );
+    } finally {
+      setDeletingProject(false);
+    }
+  };
+
+  const handleCloseDeleteProjectModal = () => {
+    if (deletingProject) {
+      return;
+    }
+
+    setShowDeleteProjectModal(false);
+    setProjectToDelete(null);
+  };
 
   const getMemberRole = (member) => {
     const isOwner =
@@ -274,12 +430,6 @@ function WorkspaceDetails() {
     }
   };
 
-  // --------------------------------------------------
-  // Sort members
-  //
-  // Owner → Manager → Member
-  // --------------------------------------------------
-
   const getRolePriority = (role) => {
     switch (role) {
       case "owner":
@@ -293,21 +443,49 @@ function WorkspaceDetails() {
     }
   };
 
-  const sortedMembers = [...(workspace?.members || [])].sort(
-    (a, b) => {
-      const roleA = getMemberRole(a);
-      const roleB = getMemberRole(b);
+  const getProjectStatusBadgeClasses = (status) => {
+    switch (status) {
+      case "active":
+        return "bg-green-50 text-green-600 border-green-100";
 
-      return (
-        getRolePriority(roleA) -
-        getRolePriority(roleB)
-      );
+      case "completed":
+        return "bg-blue-50 text-blue-600 border-blue-100";
+
+      case "archived":
+        return "bg-slate-100 text-slate-500 border-slate-200";
+
+      default:
+        return "bg-slate-100 text-slate-500 border-slate-200";
     }
-  );
+  };
 
-  // --------------------------------------------------
-  // Loading
-  // --------------------------------------------------
+  const getProjectStatusLabel = (status) => {
+    switch (status) {
+      case "active":
+        return "Active";
+
+      case "completed":
+        return "Completed";
+
+      case "archived":
+        return "Archived";
+
+      default:
+        return status || "Unknown";
+    }
+  };
+
+  const sortedMembers = [
+    ...(workspace?.members || []),
+  ].sort((a, b) => {
+    const roleA = getMemberRole(a);
+    const roleB = getMemberRole(b);
+
+    return (
+      getRolePriority(roleA) -
+      getRolePriority(roleB)
+    );
+  });
 
   if (loading) {
     return (
@@ -320,10 +498,6 @@ function WorkspaceDetails() {
       </div>
     );
   }
-
-  // --------------------------------------------------
-  // Error
-  // --------------------------------------------------
 
   if (error) {
     return (
@@ -349,11 +523,6 @@ function WorkspaceDetails() {
       onClick={() => setOpenMenu(null)}
     >
       <div className="mx-auto max-w-7xl">
-
-        {/* ==================================================
-            Back button
-        ================================================== */}
-
         <button
           type="button"
           onClick={() => navigate("/workspaces")}
@@ -363,54 +532,56 @@ function WorkspaceDetails() {
           Back to workspaces
         </button>
 
-        {/* ==================================================
-            Workspace Header
-        ================================================== */}
-
         <div className="rounded-2xl bg-white p-8 shadow-sm">
+          <div className="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
+            <div className="flex items-start gap-5">
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
+                <Briefcase size={26} />
+              </div>
 
-          <div className="flex items-start gap-5">
+              <div>
+                <h1 className="text-3xl font-bold text-slate-900">
+                  {workspace.name}
+                </h1>
 
-            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
-              <Briefcase size={26} />
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
+                  {workspace.description ||
+                    "No description provided."}
+                </p>
+              </div>
             </div>
 
-            <div>
-              <h1 className="text-3xl font-bold text-slate-900">
-                {workspace.name}
-              </h1>
+            <div className="flex shrink-0 items-center gap-2">
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  setShowEditWorkspaceModal(true);
+                }}
+                className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-600"
+              >
+                <Pencil size={16} />
+                Edit
+              </button>
 
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
-                {workspace.description ||
-                  "No description provided."}
-              </p>
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  setShowDeleteWorkspaceModal(true);
+                }}
+                className="flex items-center gap-2 rounded-xl border border-red-200 bg-white px-4 py-2.5 text-sm font-semibold text-red-600 transition hover:bg-red-50"
+              >
+                <Trash2 size={16} />
+                Delete
+              </button>
             </div>
-
           </div>
-
         </div>
 
-        {/* ==================================================
-            Workspace Content
-
-            IMPORTANT:
-            No overflow-hidden here.
-            This allows the member dropdown to extend
-            below the card.
-        ================================================== */}
-
         <div className="relative mt-6 rounded-2xl border border-slate-200 bg-white shadow-sm">
-
-          {/* --------------------------------------------------
-              Tabs
-          -------------------------------------------------- */}
-
           <div className="rounded-t-2xl border-b border-slate-200 px-6 pt-2 sm:px-8">
-
             <div className="flex gap-8">
-
-              {/* Members */}
-
               <button
                 type="button"
                 onClick={() => {
@@ -424,7 +595,6 @@ function WorkspaceDetails() {
                 }`}
               >
                 <Users size={17} />
-
                 Members
 
                 <span
@@ -437,8 +607,6 @@ function WorkspaceDetails() {
                   {workspace.members?.length || 0}
                 </span>
               </button>
-
-              {/* Projects */}
 
               <button
                 type="button"
@@ -453,7 +621,6 @@ function WorkspaceDetails() {
                 }`}
               >
                 <FolderKanban size={17} />
-
                 Projects
 
                 <span
@@ -466,29 +633,20 @@ function WorkspaceDetails() {
                   {projects.length}
                 </span>
               </button>
-
             </div>
-
           </div>
-
-          {/* ==================================================
-              MEMBERS TAB
-          ================================================== */}
 
           {activeTab === "members" && (
             <div>
-
-              {/* Header */}
-
               <div className="flex flex-col gap-4 px-6 py-6 sm:flex-row sm:items-center sm:justify-between sm:px-8">
-
                 <div>
                   <h2 className="text-lg font-bold text-slate-900">
                     Workspace members
                   </h2>
 
                   <p className="mt-1 text-sm text-slate-500">
-                    Manage people and their roles in this workspace.
+                    Manage people and their roles in this
+                    workspace.
                   </p>
                 </div>
 
@@ -503,10 +661,7 @@ function WorkspaceDetails() {
                   <UserPlus size={17} />
                   Add member
                 </button>
-
               </div>
-
-              {/* Members list */}
 
               {loadingMembers ? (
                 <div className="border-t border-slate-100 p-8">
@@ -516,7 +671,6 @@ function WorkspaceDetails() {
                 </div>
               ) : sortedMembers.length === 0 ? (
                 <div className="border-t border-slate-100 p-12 text-center">
-
                   <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-slate-400">
                     <Users size={26} />
                   </div>
@@ -528,11 +682,9 @@ function WorkspaceDetails() {
                   <p className="mt-1 text-sm text-slate-500">
                     Add members to start collaborating.
                   </p>
-
                 </div>
               ) : (
-                <div className="rounded-b-2xl border-t border-slate-100 divide-y divide-slate-100">
-
+                <div className="divide-y divide-slate-100 rounded-b-2xl border-t border-slate-100">
                   {sortedMembers.map((member, index) => {
                     const user = member?.user;
 
@@ -551,13 +703,7 @@ function WorkspaceDetails() {
                         key={user._id || index}
                         className="group flex items-center justify-between gap-6 px-6 py-5 transition hover:bg-slate-50/70 sm:px-8"
                       >
-
-                        {/* --------------------------------
-                            User information
-                        -------------------------------- */}
-
                         <div className="flex min-w-0 items-center gap-4">
-
                           <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-blue-100 text-sm font-bold text-blue-600">
                             {user.name
                               ?.charAt(0)
@@ -565,7 +711,6 @@ function WorkspaceDetails() {
                           </div>
 
                           <div className="min-w-0">
-
                             <p className="truncate text-sm font-semibold text-slate-900">
                               {user.name || "Unknown user"}
                             </p>
@@ -573,27 +718,10 @@ function WorkspaceDetails() {
                             <p className="mt-0.5 truncate text-sm text-slate-500">
                               {user.email || ""}
                             </p>
-
                           </div>
-
                         </div>
 
-                        {/* --------------------------------
-                            RIGHT SIDE
-
-                            Fixed width means every role
-                            occupies the same visual column.
-                        -------------------------------- */}
-
                         <div className="flex w-56 shrink-0 items-center justify-end gap-3">
-
-                          {/* --------------------------------
-                              Fixed-width role badge
-
-                              All three badges now have
-                              exactly the same dimensions.
-                          -------------------------------- */}
-
                           <span
                             className={`flex h-9 w-24 items-center justify-center rounded-full border text-xs font-semibold ${getRoleBadgeClasses(
                               role
@@ -602,17 +730,9 @@ function WorkspaceDetails() {
                             {getRoleLabel(role)}
                           </span>
 
-                          {/* --------------------------------
-                              Fixed menu space
-
-                              Owner has empty space here.
-                          -------------------------------- */}
-
                           <div className="relative h-9 w-9 shrink-0">
-
                             {!isOwner && (
                               <>
-
                                 <button
                                   type="button"
                                   onClick={(event) => {
@@ -631,25 +751,17 @@ function WorkspaceDetails() {
                                   <MoreVertical size={18} />
                                 </button>
 
-                                {/* --------------------------------
-                                    Dropdown
-
-                                    ALWAYS opens DOWNWARD.
-
-                                    Parent containers no longer
-                                    have overflow-hidden, so this
-                                    can extend outside the card.
-                                -------------------------------- */}
-
                                 {openMenu === user._id && (
-                                  <div className="absolute right-0 top-11 z-50 w-48 overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-xl">
-
+                                  <div
+                                    className="absolute right-0 top-11 z-50 w-48 overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-xl"
+                                    onClick={(event) =>
+                                      event.stopPropagation()
+                                    }
+                                  >
                                     <button
                                       type="button"
                                       onClick={() =>
-                                        handleOpenRoleModal(
-                                          member
-                                        )
+                                        handleOpenRoleModal(member)
                                       }
                                       className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm font-medium text-slate-700 transition hover:bg-slate-50"
                                     >
@@ -657,16 +769,13 @@ function WorkspaceDetails() {
                                         size={16}
                                         className="text-slate-400"
                                       />
-
                                       Change role
                                     </button>
 
                                     <button
                                       type="button"
                                       onClick={() =>
-                                        handleRemoveMember(
-                                          member
-                                        )
+                                        handleRemoveMember(member)
                                       }
                                       disabled={isRemoving}
                                       className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm font-medium text-red-600 transition hover:bg-red-50 disabled:opacity-50"
@@ -677,36 +786,23 @@ function WorkspaceDetails() {
                                         ? "Removing..."
                                         : "Remove member"}
                                     </button>
-
                                   </div>
                                 )}
-
                               </>
                             )}
-
                           </div>
-
                         </div>
-
                       </div>
                     );
                   })}
-
                 </div>
               )}
-
             </div>
           )}
 
-          {/* ==================================================
-              PROJECTS TAB
-          ================================================== */}
-
           {activeTab === "projects" && (
             <div>
-
               <div className="flex flex-col gap-4 px-6 py-6 sm:flex-row sm:items-center sm:justify-between sm:px-8">
-
                 <div>
                   <h2 className="text-lg font-bold text-slate-900">
                     Workspace projects
@@ -727,12 +823,10 @@ function WorkspaceDetails() {
                   <Plus size={17} />
                   Create project
                 </button>
-
               </div>
 
               {projects.length === 0 ? (
                 <div className="border-t border-slate-100 p-12 text-center">
-
                   <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-slate-400">
                     <FolderKanban size={26} />
                   </div>
@@ -744,13 +838,10 @@ function WorkspaceDetails() {
                   <p className="mt-1 text-sm text-slate-500">
                     Create a project to start managing tasks.
                   </p>
-
                 </div>
               ) : (
                 <div className="rounded-b-2xl border-t border-slate-100 p-6 sm:p-8">
-
                   <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-
                     {projects.map((project) => (
                       <div
                         key={project._id}
@@ -761,18 +852,69 @@ function WorkspaceDetails() {
                         }
                         className="cursor-pointer rounded-xl border border-slate-200 p-5 transition hover:border-blue-200 hover:shadow-sm"
                       >
-
                         <div className="flex items-start justify-between gap-3">
-
-                          <h3 className="font-semibold text-slate-900">
+                          <h3 className="min-w-0 truncate pr-2 font-semibold text-slate-900">
                             {project.name}
                           </h3>
 
-                          <FolderKanban
-                            size={18}
-                            className="shrink-0 text-slate-400"
-                          />
+                          <div className="relative shrink-0">
+                            <button
+                              type="button"
+                              aria-label="Project options"
+                              onClick={(event) => {
+                                event.stopPropagation();
 
+                                setOpenMenu(
+                                  openMenu === project._id
+                                    ? null
+                                    : project._id
+                                );
+                              }}
+                              className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+                            >
+                              <MoreVertical size={18} />
+                            </button>
+
+                            {openMenu === project._id && (
+                              <div
+                                className="absolute right-0 top-10 z-50 w-48 overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-xl"
+                                onClick={(event) =>
+                                  event.stopPropagation()
+                                }
+                              >
+                                <button
+                                  type="button"
+                                  onClick={(event) =>
+                                    handleOpenEditProject(
+                                      event,
+                                      project
+                                    )
+                                  }
+                                  className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                                >
+                                  <Pencil
+                                    size={16}
+                                    className="text-slate-400"
+                                  />
+                                  Edit project
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={(event) =>
+                                    handleOpenDeleteProject(
+                                      event,
+                                      project
+                                    )
+                                  }
+                                  className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm font-medium text-red-600 transition hover:bg-red-50"
+                                >
+                                  <Trash2 size={16} />
+                                  Delete project
+                                </button>
+                              </div>
+                            )}
+                          </div>
                         </div>
 
                         <p className="mt-2 line-clamp-2 text-sm text-slate-500">
@@ -781,31 +923,25 @@ function WorkspaceDetails() {
                         </p>
 
                         <div className="mt-4">
-
-                          <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold capitalize text-blue-600">
-                            {project.status}
+                          <span
+                            className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${getProjectStatusBadgeClasses(
+                              project.status
+                            )}`}
+                          >
+                            {getProjectStatusLabel(
+                              project.status
+                            )}
                           </span>
-
                         </div>
-
                       </div>
                     ))}
-
                   </div>
-
                 </div>
               )}
-
             </div>
           )}
-
         </div>
-
       </div>
-
-      {/* ==================================================
-          Add Member Modal
-      ================================================== */}
 
       {showAddMemberModal && (
         <AddMemberModal
@@ -820,10 +956,6 @@ function WorkspaceDetails() {
         />
       )}
 
-      {/* ==================================================
-          Create Project Modal
-      ================================================== */}
-
       {showCreateProjectModal && (
         <CreateProjectModal
           workspaceId={workspaceId}
@@ -831,37 +963,209 @@ function WorkspaceDetails() {
             setShowCreateProjectModal(false)
           }
           onCreated={(project) => {
-            setProjects((current) => [
-              project,
-              ...current,
-            ]);
+            setProjects((current) =>
+              [...current, project].sort(
+                (a, b) =>
+                  new Date(a.createdAt) -
+                  new Date(b.createdAt)
+              )
+            );
+
+            setShowCreateProjectModal(false);
           }}
         />
       )}
 
-      {/* ==================================================
-          Change Role Modal
-      ================================================== */}
+      {showEditWorkspaceModal && (
+        <EditWorkspaceModal
+          workspace={workspace}
+          onClose={() =>
+            setShowEditWorkspaceModal(false)
+          }
+          onUpdated={handleWorkspaceUpdated}
+        />
+      )}
 
-      {showRoleModal && selectedMember && (
+      {showEditProjectModal && selectedProject && (
+        <EditProjectModal
+          project={selectedProject}
+          onClose={() => {
+            setShowEditProjectModal(false);
+            setSelectedProject(null);
+          }}
+          onUpdated={handleProjectUpdated}
+        />
+      )}
+
+      {showDeleteWorkspaceModal && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm"
-          onClick={() => setShowRoleModal(false)}
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/50 px-4 backdrop-blur-sm"
+          onClick={() => {
+            if (!deletingWorkspace) {
+              setShowDeleteWorkspaceModal(false);
+            }
+          }}
         >
-
           <div
             className="w-full max-w-md rounded-2xl bg-white shadow-2xl"
             onClick={(event) =>
               event.stopPropagation()
             }
           >
+            <div className="flex items-start gap-4 border-b border-slate-100 px-6 py-5">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-red-50 text-red-600">
+                <AlertTriangle size={21} />
+              </div>
 
-            {/* Header */}
+              <div className="min-w-0 flex-1">
+                <h3 className="text-lg font-bold text-slate-900">
+                  Delete workspace?
+                </h3>
 
+                <p className="mt-1 text-sm leading-6 text-slate-500">
+                  This will permanently delete{" "}
+                  <span className="font-semibold text-slate-700">
+                    {workspace.name}
+                  </span>
+                  . This action cannot be undone.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() =>
+                  setShowDeleteWorkspaceModal(false)
+                }
+                disabled={deletingWorkspace}
+                className="rounded-lg p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <X size={19} />
+              </button>
+            </div>
+
+            <div className="flex justify-end gap-3 px-6 py-5">
+              <button
+                type="button"
+                onClick={() =>
+                  setShowDeleteWorkspaceModal(false)
+                }
+                disabled={deletingWorkspace}
+                className="rounded-xl border border-slate-200 px-5 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                onClick={handleDeleteWorkspace}
+                disabled={deletingWorkspace}
+                className="flex items-center gap-2 rounded-xl bg-red-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-red-600/20 transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {deletingWorkspace && (
+                  <Loader2
+                    size={17}
+                    className="animate-spin"
+                  />
+                )}
+
+                {deletingWorkspace
+                  ? "Deleting..."
+                  : "Delete workspace"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showDeleteProjectModal && projectToDelete && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/50 px-4 backdrop-blur-sm"
+          onClick={handleCloseDeleteProjectModal}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl bg-white shadow-2xl"
+            onClick={(event) =>
+              event.stopPropagation()
+            }
+          >
+            <div className="flex items-start gap-4 border-b border-slate-100 px-6 py-5">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-red-50 text-red-600">
+                <AlertTriangle size={21} />
+              </div>
+
+              <div className="min-w-0 flex-1">
+                <h3 className="text-lg font-bold text-slate-900">
+                  Delete project?
+                </h3>
+
+                <p className="mt-1 text-sm leading-6 text-slate-500">
+                  This will permanently delete{" "}
+                  <span className="font-semibold text-slate-700">
+                    {projectToDelete.name}
+                  </span>
+                  . This action cannot be undone.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleCloseDeleteProjectModal}
+                disabled={deletingProject}
+                className="rounded-lg p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <X size={19} />
+              </button>
+            </div>
+
+            <div className="flex justify-end gap-3 px-6 py-5">
+              <button
+                type="button"
+                onClick={handleCloseDeleteProjectModal}
+                disabled={deletingProject}
+                className="rounded-xl border border-slate-200 px-5 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                onClick={handleDeleteProject}
+                disabled={deletingProject}
+                className="flex items-center gap-2 rounded-xl bg-red-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-red-600/20 transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {deletingProject && (
+                  <Loader2
+                    size={17}
+                    className="animate-spin"
+                  />
+                )}
+
+                {deletingProject
+                  ? "Deleting..."
+                  : "Delete project"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showRoleModal && selectedMember && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm"
+          onClick={() => {
+            if (!updatingRole) {
+              setShowRoleModal(false);
+            }
+          }}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl bg-white shadow-2xl"
+            onClick={(event) =>
+              event.stopPropagation()
+            }
+          >
             <div className="flex items-center justify-between border-b border-slate-100 px-6 py-5">
-
               <div>
-
                 <h3 className="text-lg font-bold text-slate-900">
                   Change member role
                 </h3>
@@ -869,9 +1173,9 @@ function WorkspaceDetails() {
                 <p className="mt-1 text-sm text-slate-500">
                   Update the role for{" "}
                   {selectedMember.user?.name ||
-                    "this member"}.
+                    "this member"}
+                  .
                 </p>
-
               </div>
 
               <button
@@ -879,19 +1183,14 @@ function WorkspaceDetails() {
                 onClick={() =>
                   setShowRoleModal(false)
                 }
-                className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
+                disabled={updatingRole}
+                className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 disabled:opacity-50"
               >
                 <X size={18} />
               </button>
-
             </div>
 
-            {/* Role options */}
-
             <div className="space-y-3 px-6 py-6">
-
-              {/* Member */}
-
               <button
                 type="button"
                 onClick={() =>
@@ -903,9 +1202,7 @@ function WorkspaceDetails() {
                     : "border-slate-200 hover:border-blue-200 hover:bg-slate-50"
                 }`}
               >
-
                 <div>
-
                   <p className="text-sm font-semibold text-slate-900">
                     Member
                   </p>
@@ -913,7 +1210,6 @@ function WorkspaceDetails() {
                   <p className="mt-1 text-xs text-slate-500">
                     Regular workspace access.
                   </p>
-
                 </div>
 
                 {selectedRole === "member" && (
@@ -921,10 +1217,7 @@ function WorkspaceDetails() {
                     <Check size={14} />
                   </div>
                 )}
-
               </button>
-
-              {/* Manager */}
 
               <button
                 type="button"
@@ -937,9 +1230,7 @@ function WorkspaceDetails() {
                     : "border-slate-200 hover:border-amber-200 hover:bg-slate-50"
                 }`}
               >
-
                 <div>
-
                   <p className="text-sm font-semibold text-slate-900">
                     Manager
                   </p>
@@ -947,7 +1238,6 @@ function WorkspaceDetails() {
                   <p className="mt-1 text-xs text-slate-500">
                     Higher workspace management access.
                   </p>
-
                 </div>
 
                 {selectedRole === "manager" && (
@@ -955,21 +1245,17 @@ function WorkspaceDetails() {
                     <Check size={14} />
                   </div>
                 )}
-
               </button>
-
             </div>
 
-            {/* Footer */}
-
             <div className="flex justify-end gap-3 border-t border-slate-100 px-6 py-5">
-
               <button
                 type="button"
                 onClick={() =>
                   setShowRoleModal(false)
                 }
-                className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-50"
+                disabled={updatingRole}
+                className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 disabled:opacity-50"
               >
                 Cancel
               </button>
@@ -984,14 +1270,10 @@ function WorkspaceDetails() {
                   ? "Updating..."
                   : "Update role"}
               </button>
-
             </div>
-
           </div>
-
         </div>
       )}
-
     </div>
   );
 }

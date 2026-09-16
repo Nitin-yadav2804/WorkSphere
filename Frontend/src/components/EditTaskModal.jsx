@@ -1,115 +1,302 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { X } from "lucide-react";
+import {
+  X,
+  Loader2,
+  CheckSquare,
+  User,
+} from "lucide-react";
 import { toast } from "sonner";
 import { updateTask } from "../services/taskService";
+import { getWorkspaceMembers } from "../services/workspaceService";
 
-const editTaskSchema = z.object({
-  title: z
-    .string()
-    .min(2, "Task title must be at least 2 characters")
-    .max(200, "Task title cannot exceed 200 characters"),
+function EditTaskModal({
+  task,
+  workspaceId,
+  onClose,
+  onUpdated,
+}) {
+  const [members, setMembers] = useState([]);
+  const [loadingMembers, setLoadingMembers] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
-  description: z
-    .string()
-    .max(1000, "Description cannot exceed 1000 characters")
-    .optional(),
+  const getAssignedUserId = (assignedTo) => {
+    if (!assignedTo) {
+      return "";
+    }
 
-  status: z.enum(["todo", "in-progress", "completed"]),
+    if (
+      typeof assignedTo === "object" &&
+      assignedTo._id
+    ) {
+      return assignedTo._id;
+    }
 
-  priority: z.enum(["low", "medium", "high", "urgent"]),
+    if (typeof assignedTo === "string") {
+      return assignedTo;
+    }
 
-  dueDate: z.string().optional(),
-});
+    return "";
+  };
 
-function EditTaskModal({ task, onClose, onUpdated }) {
+  const formatDate = (date) => {
+    if (!date) {
+      return "";
+    }
+
+    const parsedDate = new Date(date);
+
+    if (Number.isNaN(parsedDate.getTime())) {
+      return "";
+    }
+
+    const year = parsedDate.getFullYear();
+
+    const month = String(
+      parsedDate.getMonth() + 1
+    ).padStart(2, "0");
+
+    const day = String(
+      parsedDate.getDate()
+    ).padStart(2, "0");
+
+    return `${year}-${month}-${day}`;
+  };
+
+  const getDefaultValues = (currentTask) => ({
+    title: currentTask?.title || "",
+    description:
+      currentTask?.description || "",
+    assignedTo: getAssignedUserId(
+      currentTask?.assignedTo
+    ),
+    status:
+      currentTask?.status || "todo",
+    priority:
+      currentTask?.priority || "medium",
+    dueDate: formatDate(
+      currentTask?.dueDate
+    ),
+  });
+
   const {
     register,
     handleSubmit,
     reset,
-    formState: { errors, isSubmitting },
+    formState: { errors },
   } = useForm({
-    resolver: zodResolver(editTaskSchema),
-    defaultValues: {
-      title: "",
-      description: "",
-      status: "todo",
-      priority: "medium",
-      dueDate: "",
-    },
+    defaultValues:
+      getDefaultValues(task),
   });
 
   useEffect(() => {
-    reset({
-      title: task.title || "",
-      description: task.description || "",
-      status: task.status || "todo",
-      priority: task.priority || "medium",
-      dueDate: task.dueDate
-        ? new Date(task.dueDate).toISOString().slice(0, 16)
-        : "",
-    });
+    reset(getDefaultValues(task));
   }, [task, reset]);
 
+  useEffect(() => {
+    const fetchMembers = async () => {
+      if (!workspaceId) {
+        console.error(
+          "EditTaskModal: workspaceId is missing"
+        );
+        return;
+      }
+
+      try {
+        setLoadingMembers(true);
+
+        const response =
+          await getWorkspaceMembers(
+            workspaceId
+          );
+
+        const workspaceMembers =
+          Array.isArray(
+            response?.members
+          )
+            ? response.members
+            : [];
+
+        const normalizedMembers =
+          workspaceMembers
+            .map((member) => {
+              if (
+                member?.user &&
+                typeof member.user ===
+                  "object"
+              ) {
+                return {
+                  ...member,
+                  user: member.user,
+                };
+              }
+
+              if (
+                member?._id &&
+                member?.name
+              ) {
+                return {
+                  user: member,
+                };
+              }
+
+              return null;
+            })
+            .filter(
+              (member) =>
+                member?.user?._id
+            );
+
+        setMembers(
+          normalizedMembers
+        );
+
+        reset({
+          ...getDefaultValues(task),
+          assignedTo:
+            getAssignedUserId(
+              task?.assignedTo
+            ),
+        });
+      } catch (error) {
+        console.error(
+          "Failed to fetch workspace members:",
+          error.response?.data ||
+            error.message
+        );
+
+        setMembers([]);
+
+        toast.error(
+          error.response?.data?.message ||
+            "Failed to load workspace members."
+        );
+      } finally {
+        setLoadingMembers(false);
+      }
+    };
+
+    fetchMembers();
+  }, [workspaceId, task, reset]);
+
   const onSubmit = async (data) => {
-    try {
-      const taskData = {
-        ...data,
-        dueDate: data.dueDate
-          ? new Date(data.dueDate).toISOString()
-          : undefined,
-      };
-
-      const response = await updateTask(task._id, taskData);
-
-      toast.success("Task updated successfully");
-
-      onUpdated(response.task);
-      onClose();
-    } catch (error) {
+    if (!task?._id) {
       console.error(
-        "Failed to update task:",
-        error.response?.data || error.message
+        "EditTaskModal: task is missing",
+        task
       );
 
       toast.error(
-        error.response?.data?.message || "Failed to update task."
+        "Unable to update task. Task data is missing."
       );
+
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+
+      const taskData = {
+        title: data.title.trim(),
+        description:
+          data.description.trim(),
+        assignedTo:
+          data.assignedTo || undefined,
+        status: data.status,
+        priority: data.priority,
+        dueDate: data.dueDate
+          ? `${data.dueDate}T00:00:00.000Z`
+          : undefined,
+      };
+
+      const response =
+        await updateTask(
+          task._id,
+          taskData
+        );
+
+      const updatedTask =
+        response?.task;
+
+      if (updatedTask) {
+        if (data.assignedTo) {
+          const selectedMember =
+            members.find(
+              (member) =>
+                member?.user?._id ===
+                data.assignedTo
+            );
+
+          if (
+            selectedMember?.user
+          ) {
+            updatedTask.assignedTo =
+              selectedMember.user;
+          }
+        } else {
+          updatedTask.assignedTo = null;
+        }
+      }
+
+      onUpdated(updatedTask);
+    } catch (error) {
+      console.error(
+        "Failed to update task:",
+        error.response?.data ||
+          error.message
+      );
+
+      toast.error(
+        error.response?.data?.message ||
+          "Failed to update task."
+      );
+    } finally {
+      setSubmitting(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
-      <div className="w-full max-w-lg rounded-2xl bg-white shadow-2xl">
-        {/* Header */}
+    <div
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/50 px-4 py-6 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white shadow-2xl"
+        onClick={(event) =>
+          event.stopPropagation()
+        }
+      >
         <div className="flex items-center justify-between border-b border-slate-100 px-6 py-5">
-          <div>
-            <h2 className="text-xl font-bold text-slate-900">
-              Edit task
-            </h2>
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+              <CheckSquare size={19} />
+            </div>
 
-            <p className="mt-1 text-sm text-slate-500">
-              Update task information.
-            </p>
+            <div>
+              <h2 className="text-lg font-bold text-slate-900">
+                Edit task
+              </h2>
+
+              <p className="mt-0.5 text-sm text-slate-500">
+                Update task details and assignment.
+              </p>
+            </div>
           </div>
 
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
+            disabled={submitting}
+            className="rounded-lg p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            <X size={20} />
+            <X size={19} />
           </button>
         </div>
 
-        {/* Form */}
         <form
           onSubmit={handleSubmit(onSubmit)}
-          className="space-y-5 p-6"
+          className="space-y-5 px-6 py-6"
         >
-          {/* Title */}
           <div>
             <label className="mb-2 block text-sm font-semibold text-slate-700">
               Task title
@@ -117,18 +304,26 @@ function EditTaskModal({ task, onClose, onUpdated }) {
 
             <input
               type="text"
-              {...register("title")}
-              className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
+              {...register("title", {
+                required:
+                  "Task title is required",
+                minLength: {
+                  value: 2,
+                  message:
+                    "Task title must be at least 2 characters",
+                },
+              })}
+              className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
+              placeholder="Enter task title"
             />
 
             {errors.title && (
-              <p className="mt-1.5 text-xs text-red-500">
+              <p className="mt-1.5 text-xs font-medium text-red-500">
                 {errors.title.message}
               </p>
             )}
           </div>
 
-          {/* Description */}
           <div>
             <label className="mb-2 block text-sm font-semibold text-slate-700">
               Description
@@ -137,18 +332,50 @@ function EditTaskModal({ task, onClose, onUpdated }) {
             <textarea
               rows={4}
               {...register("description")}
-              className="w-full resize-none rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
+              className="w-full resize-none rounded-xl border border-slate-200 px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
+              placeholder="Describe the task..."
             />
-
-            {errors.description && (
-              <p className="mt-1.5 text-xs text-red-500">
-                {errors.description.message}
-              </p>
-            )}
           </div>
 
-          {/* Status + Priority */}
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label className="mb-2 flex items-center gap-2 text-sm font-semibold text-slate-700">
+              <User size={16} />
+              Assigned to
+            </label>
+
+            <select
+              {...register("assignedTo")}
+              disabled={loadingMembers}
+              className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 disabled:cursor-not-allowed disabled:bg-slate-50"
+            >
+              <option value="">
+                {loadingMembers
+                  ? "Loading members..."
+                  : "Unassigned"}
+              </option>
+
+              {members.map((member) => (
+                <option
+                  key={member.user._id}
+                  value={member.user._id}
+                >
+                  {member.user.name}
+                  {member.user.email
+                    ? ` (${member.user.email})`
+                    : ""}
+                </option>
+              ))}
+            </select>
+
+            {!loadingMembers &&
+              members.length === 0 && (
+                <p className="mt-2 text-xs text-amber-600">
+                  No members found in this workspace.
+                </p>
+              )}
+          </div>
+
+          <div className="grid gap-5 sm:grid-cols-2">
             <div>
               <label className="mb-2 block text-sm font-semibold text-slate-700">
                 Status
@@ -156,11 +383,19 @@ function EditTaskModal({ task, onClose, onUpdated }) {
 
               <select
                 {...register("status")}
-                className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
+                className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
               >
-                <option value="todo">To do</option>
-                <option value="in-progress">In progress</option>
-                <option value="completed">Completed</option>
+                <option value="todo">
+                  To Do
+                </option>
+
+                <option value="in-progress">
+                  In Progress
+                </option>
+
+                <option value="completed">
+                  Completed
+                </option>
               </select>
             </div>
 
@@ -171,26 +406,36 @@ function EditTaskModal({ task, onClose, onUpdated }) {
 
               <select
                 {...register("priority")}
-                className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
+                className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
               >
-                <option value="low">Low</option>
-                <option value="medium">Medium</option>
-                <option value="high">High</option>
-                <option value="urgent">Urgent</option>
+                <option value="low">
+                  Low
+                </option>
+
+                <option value="medium">
+                  Medium
+                </option>
+
+                <option value="high">
+                  High
+                </option>
+
+                <option value="urgent">
+                  Urgent
+                </option>
               </select>
             </div>
           </div>
 
-          {/* Due Date */}
           <div>
             <label className="mb-2 block text-sm font-semibold text-slate-700">
               Due date
             </label>
 
             <input
-              type="datetime-local"
+              type="date"
               {...register("dueDate")}
-              className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
+              className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
             />
 
             {errors.dueDate && (
@@ -200,22 +445,31 @@ function EditTaskModal({ task, onClose, onUpdated }) {
             )}
           </div>
 
-          {/* Actions */}
           <div className="flex justify-end gap-3 border-t border-slate-100 pt-5">
             <button
               type="button"
               onClick={onClose}
-              className="rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-100"
+              disabled={submitting}
+              className="rounded-xl border border-slate-200 px-5 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
             >
               Cancel
             </button>
 
             <button
               type="submit"
-              disabled={isSubmitting}
-              className="rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+              disabled={submitting}
+              className="flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {isSubmitting ? "Saving..." : "Save changes"}
+              {submitting && (
+                <Loader2
+                  size={17}
+                  className="animate-spin"
+                />
+              )}
+
+              {submitting
+                ? "Saving..."
+                : "Save changes"}
             </button>
           </div>
         </form>
