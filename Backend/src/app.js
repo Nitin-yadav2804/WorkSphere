@@ -7,6 +7,7 @@ import taskRoutes from "./routes/task.routes.js";
 import commentRoutes from "./routes/comment.routes.js";
 import activityRoutes from "./routes/activity.routes.js";
 import cors from "cors";
+import adminRoutes from "./routes/admin.routes.js";
 
 const app = express();
 
@@ -19,6 +20,7 @@ app.use(
   })
 );
 
+app.use("/api/admin", adminRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/workspaces", workspaceRoutes);
 app.use("/api", projectRoutes);
