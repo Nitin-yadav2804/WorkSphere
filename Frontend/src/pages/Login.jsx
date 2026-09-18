@@ -48,10 +48,11 @@ function Login() {
       const { token, user } = response.data;
 
       localStorage.setItem("token", token);
+      localStorage.setItem("user", JSON.stringify(user));
 
       dispatch(setCredentials({ token, user }));
 
-      navigate("/dashboard");
+      navigate(user.role === "admin" ? "/admin" : "/dashboard");
     } catch (error) {
       console.error(
         "Login failed:",
