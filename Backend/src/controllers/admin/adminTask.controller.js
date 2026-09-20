@@ -1,4 +1,5 @@
 import Task from "../../models/task.model.js";
+import deleteTaskCascade from "../../utils/deleteTaskCascade.js";
 
 export const getTaskDetails = async (req, res) => {
     const { taskId } = req.params;
@@ -33,7 +34,7 @@ export const deleteTask = async (req, res) => {
         });
     }
 
-    await Task.findByIdAndDelete(taskId);
+    await deleteTaskCascade(taskId);
 
     res.status(200).json({
         success: true,

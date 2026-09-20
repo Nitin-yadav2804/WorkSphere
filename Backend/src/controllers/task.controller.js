@@ -3,6 +3,7 @@ import Project from "../models/project.model.js";
 import Workspace from "../models/workspace.model.js";
 import AppError from "../utils/AppError.js";
 import createActivity from "../utils/createActivity.js";
+import deleteTaskCascade from "../utils/deleteTaskCascade.js";
 
 export const createTask = async (req, res) => {
     const { projectId } = req.params;
@@ -259,7 +260,7 @@ export const deleteTask = async (req, res) => {
         );
     }
 
-    await Task.findByIdAndDelete(taskId);
+    await deleteTaskCascade(taskId);
 
     await createActivity({
         action: "task_deleted",

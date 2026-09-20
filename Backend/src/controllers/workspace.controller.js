@@ -2,6 +2,7 @@ import User from "../models/user.model.js";
 import Workspace from "../models/workspace.model.js";
 import AppError from "../utils/AppError.js";
 import createActivity from "../utils/createActivity.js";
+import deleteWorkspaceCascade from "../utils/deleteWorkspaceCascade.js";
 
 export const createWorkspace = async (req, res) => {
     const { name, description } = req.body;
@@ -123,7 +124,7 @@ export const deleteWorkspace = async (req, res) => {
 
     const workspaceName = workspace.name;
 
-    await Workspace.findByIdAndDelete(workspaceId);
+    await deleteWorkspaceCascade(workspaceId);
 
     await createActivity({
         action: "workspace_deleted",

@@ -1,4 +1,5 @@
 import Workspace from "../../models/workspace.model.js";
+import deleteWorkspaceCascade from "../../utils/deleteWorkspaceCascade.js";
 
 export const getAllWorkspaces = async (req, res) => {
     const workspaces = await Workspace.find()
@@ -43,7 +44,7 @@ export const deleteWorkspace = async (req, res) => {
         });
     }
 
-    await Workspace.findByIdAndDelete(workspaceId);
+    await deleteWorkspaceCascade(workspaceId);
 
     res.status(200).json({
         success: true,

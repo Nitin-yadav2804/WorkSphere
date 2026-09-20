@@ -2,6 +2,7 @@ import Project from "../models/project.model.js";
 import Workspace from "../models/workspace.model.js";
 import AppError from "../utils/AppError.js";
 import createActivity from "../utils/createActivity.js";
+import deleteProjectCascade from "../utils/deleteProjectCascade.js";
 
 export const createProject = async (req, res) => {
     const { workspaceId } = req.params;
@@ -187,7 +188,7 @@ export const deleteProject = async (req, res) => {
 
     const projectName = project.name;
 
-    await Project.findByIdAndDelete(projectId);
+    await deleteProjectCascade(projectId);
 
     await createActivity({
         action: "project_deleted",

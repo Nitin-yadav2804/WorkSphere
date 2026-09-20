@@ -1,5 +1,6 @@
 import Project from "../../models/project.model.js";
 import Task from "../../models/task.model.js";
+import deleteProjectCascade from "../../utils/deleteProjectCascade.js";
 
 export const getAllProjects = async (req, res) => {
     const projects = await Project.find()
@@ -63,7 +64,7 @@ export const deleteProject = async (req, res) => {
         });
     }
 
-    await Project.findByIdAndDelete(projectId);
+    await deleteProjectCascade(projectId);
 
     res.status(200).json({
         success: true,
