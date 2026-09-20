@@ -130,7 +130,6 @@ export const deleteWorkspace = async (req, res) => {
         action: "workspace_deleted",
         description: `Deleted workspace "${workspaceName}"`,
         user: req.user.userId,
-        workspace: workspace._id,
     });
 
     res.status(200).json({

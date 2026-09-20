@@ -268,7 +268,6 @@ export const deleteTask = async (req, res) => {
         user: req.user.userId,
         workspace: workspace._id,
         project: project._id,
-        task: task._id,
     });
 
     res.status(200).json({

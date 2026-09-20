@@ -195,7 +195,6 @@ export const deleteProject = async (req, res) => {
         description: `Deleted project "${projectName}"`,
         user: req.user.userId,
         workspace: workspace._id,
-        project: project._id,
     });
 
     res.status(200).json({

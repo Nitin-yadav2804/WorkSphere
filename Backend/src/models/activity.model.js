@@ -23,7 +23,6 @@ const activitySchema = new mongoose.Schema(
         workspace: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "Workspace",
-            required: true,
         },
 
         project: {
