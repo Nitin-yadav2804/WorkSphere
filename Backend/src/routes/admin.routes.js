@@ -10,6 +10,7 @@ import {
     deleteTask
 } from "../controllers/admin/adminTask.controller.js";
 import { getAllActivities } from "../controllers/admin/adminActivity.controller.js";
+import { deleteComment, getTaskComments } from "../controllers/admin/adminComment.controller.js";
 
 const router = express.Router();
 
@@ -118,6 +119,19 @@ router.get(
     authMiddleware,
     roleMiddleware("admin"),
     getAllActivities
+);
+router.get(
+    "/tasks/:taskId/comments",
+    authMiddleware,
+    roleMiddleware("admin"),
+    getTaskComments
+);
+
+router.delete(
+    "/comments/:commentId",
+    authMiddleware,
+    roleMiddleware("admin"),
+    deleteComment
 );
 
 export default router;
