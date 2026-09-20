@@ -15,6 +15,12 @@ import AdminRoute from "./AdminRoute";
 import AdminLayout from "../layouts/AdminLayout";
 import AdminDashboard from "../pages/admin/AdminDashboard";
 import AdminUsers from "../pages/admin/AdminUsers";
+import AdminWorkspaces from "../pages/admin/AdminWorkspaces";
+import AdminWorkspaceDetails from "../pages/admin/AdminWorkspaceDetails";
+import AdminProjects from "../pages/admin/AdminProjects";
+import AdminProjectDetails from "../pages/admin/AdminProjectDetails";
+import AdminTaskDetails from "../pages/admin/AdminTaskDetails";
+import AdminActivity from "../pages/admin/AdminActivity";
 
 function AppRoutes() {
   return (
@@ -59,6 +65,12 @@ function AppRoutes() {
           <Route element={<AdminLayout />}>
             <Route path="/admin" element={<AdminDashboard />} />
             <Route path="/admin/users" element={<AdminUsers />} />
+            <Route path="/admin/workspaces" element={<AdminWorkspaces />} />
+            <Route path="/admin/workspaces/:workspaceId" element={<AdminWorkspaceDetails />} />
+            <Route path="/admin/projects" element={<AdminProjects />} />
+            <Route path="/admin/projects/:projectId" element={<AdminProjectDetails />} />
+            <Route path="/admin/tasks/:taskId" element={<AdminTaskDetails />} />
+            <Route path="/admin/activity" element={<AdminActivity />} />
           </Route>
         </Route>
       </Routes>

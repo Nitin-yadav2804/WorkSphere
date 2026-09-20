@@ -1,26 +1,37 @@
 import { useEffect, useState } from "react";
 import api from "../../services/api";
 import { Search, Power } from "lucide-react";
+import { toast } from "sonner";
 
 function AdminUsers() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
 
-  const currentUser = JSON.parse(localStorage.getItem("user"));
+  const currentUser = JSON.parse(
+    localStorage.getItem("user")
+  );
 
   const fetchUsers = async (searchTerm = "") => {
     try {
       const endpoint = searchTerm
-        ? `/admin/users/search?search=${encodeURIComponent(searchTerm)}`
+        ? `/admin/users/search?search=${encodeURIComponent(
+            searchTerm
+          )}`
         : "/admin/users";
 
       const response = await api.get(endpoint);
+
       setUsers(response.data.users);
     } catch (error) {
       console.error(
         "Failed to fetch users:",
         error.response?.data || error.message
+      );
+
+      toast.error(
+        error.response?.data?.message ||
+          "Failed to load users"
       );
     } finally {
       setLoading(false);
@@ -29,9 +40,17 @@ function AdminUsers() {
 
   const handleRoleChange = async (userId, role) => {
     try {
-      await api.patch(`/admin/users/${userId}/role`, {
-        role,
-      });
+      const response = await api.patch(
+        `/admin/users/${userId}/role`,
+        {
+          role,
+        }
+      );
+
+      toast.success(
+        response.data.message ||
+          "User role updated successfully"
+      );
 
       fetchUsers(search);
     } catch (error) {
@@ -39,12 +58,26 @@ function AdminUsers() {
         "Failed to update user role:",
         error.response?.data || error.message
       );
+
+      toast.error(
+        error.response?.data?.message ||
+          "Failed to update user role"
+      );
+
+      fetchUsers(search);
     }
   };
 
   const handleStatusChange = async (userId) => {
     try {
-      await api.patch(`/admin/users/${userId}/status`);
+      const response = await api.patch(
+        `/admin/users/${userId}/status`
+      );
+
+      toast.success(
+        response.data.message ||
+          "User status updated successfully"
+      );
 
       fetchUsers(search);
     } catch (error) {
@@ -52,6 +85,13 @@ function AdminUsers() {
         "Failed to update user status:",
         error.response?.data || error.message
       );
+
+      toast.error(
+        error.response?.data?.message ||
+          "Failed to update user status"
+      );
+
+      fetchUsers(search);
     }
   };
 
@@ -60,12 +100,12 @@ function AdminUsers() {
   }, []);
 
   return (
-    <div className="p-8">
+    <div className="p-4 sm:p-6 lg:p-8">
       <h1 className="text-2xl font-bold text-slate-900">
         User Management
       </h1>
 
-      <p className="mt-2 text-slate-500">
+      <p className="mt-2 text-sm text-slate-500 sm:text-base">
         Manage WorkSphere users, roles and account status.
       </p>
 
@@ -74,9 +114,9 @@ function AdminUsers() {
           Loading users...
         </p>
       ) : (
-        <div className="mt-8 overflow-hidden rounded-xl border border-slate-200 bg-white">
+        <div className="mt-6 overflow-hidden rounded-xl border border-slate-200 bg-white sm:mt-8">
           {/* Search */}
-          <div className="mt-6 flex w-full items-center gap-4 px-8">
+          <div className="flex w-full flex-col gap-3 px-4 pt-4 sm:flex-row sm:items-center sm:gap-4 sm:px-6 sm:pt-6 lg:px-8">
             <div className="relative flex-1">
               <Search
                 size={17}
@@ -96,33 +136,34 @@ function AdminUsers() {
               />
             </div>
 
-            <span className="whitespace-nowrap rounded-lg border border-blue-100 bg-blue-50 px-4 py-2 text-sm font-medium text-blue-600">
+            <span className="w-fit whitespace-nowrap rounded-lg border border-blue-100 bg-blue-50 px-4 py-2 text-sm font-medium text-blue-600">
               {users.length}{" "}
               {users.length === 1 ? "user" : "users"}
             </span>
           </div>
 
           {/* Users Table */}
-          <div className="mt-6">
-            <table className="w-full">
+          <div className="mt-6 overflow-x-auto">
+            <table className="w-full min-w-[800px]">
               <thead className="border-b border-slate-200 bg-slate-50">
                 <tr>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-700">
+                  <th className="px-4 py-4 text-left text-sm font-semibold text-slate-700 sm:px-6">
                     Name
                   </th>
 
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-700">
+                  <th className="px-4 py-4 text-left text-sm font-semibold text-slate-700 sm:px-6">
                     Email
                   </th>
 
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-700">
+                  <th className="px-4 py-4 text-left text-sm font-semibold text-slate-700 sm:px-6">
                     Role
                   </th>
 
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-700">
+                  <th className="px-4 py-4 text-left text-sm font-semibold text-slate-700 sm:px-6">
                     Status
                   </th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-700">
+
+                  <th className="px-4 py-4 text-left text-sm font-semibold text-slate-700 sm:px-6">
                     Action
                   </th>
                 </tr>
@@ -134,15 +175,15 @@ function AdminUsers() {
                     key={user._id}
                     className="border-b border-slate-100 last:border-0"
                   >
-                    <td className="px-6 py-4 text-sm text-slate-900">
+                    <td className="px-4 py-4 text-sm text-slate-900 sm:px-6">
                       {user.name}
                     </td>
 
-                    <td className="px-6 py-4 text-sm text-slate-600">
+                    <td className="px-4 py-4 text-sm text-slate-600 sm:px-6">
                       {user.email}
                     </td>
 
-                    <td className="px-6 py-4">
+                    <td className="px-4 py-4 sm:px-6">
                       {user.email === currentUser?.email ? (
                         <span className="rounded-lg bg-blue-50 px-3 py-1.5 text-sm font-medium text-blue-600">
                           Admin
@@ -158,13 +199,18 @@ function AdminUsers() {
                           }
                           className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10"
                         >
-                          <option value="user">User</option>
-                          <option value="admin">Admin</option>
+                          <option value="user">
+                            User
+                          </option>
+
+                          <option value="admin">
+                            Admin
+                          </option>
                         </select>
                       )}
                     </td>
 
-                    <td className="px-6 py-4">
+                    <td className="px-4 py-4 sm:px-6">
                       <span
                         className={`rounded-full px-3 py-1 text-xs font-medium ${
                           user.isActive === false
@@ -177,22 +223,28 @@ function AdminUsers() {
                           : "Active"}
                       </span>
                     </td>
-                    <td className="px-6 py-4">
+
+                    <td className="px-4 py-4 sm:px-6">
                       {user.email === currentUser?.email ? (
                         <span className="text-sm text-slate-400">
                           —
                         </span>
                       ) : (
                         <button
-                          onClick={() => handleStatusChange(user._id)}
-                          className={`cursor-pointer inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium transition ${
+                          onClick={() =>
+                            handleStatusChange(user._id)
+                          }
+                          className={`inline-flex cursor-pointer items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium transition ${
                             user.isActive === false
                               ? "bg-blue-50 text-blue-600 hover:bg-blue-100"
                               : "bg-slate-100 text-slate-600 hover:bg-slate-200"
                           }`}
                         >
                           <Power size={15} />
-                          {user.isActive === false ? "Activate" : "Deactivate"}
+
+                          {user.isActive === false
+                            ? "Activate"
+                            : "Deactivate"}
                         </button>
                       )}
                     </td>
