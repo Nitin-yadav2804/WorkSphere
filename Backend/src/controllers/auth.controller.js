@@ -35,6 +35,13 @@ export const loginUser = async (req, res) => {
         throw new AppError("Email not found", 404);
     }
 
+    if (!user.isActive) {
+        throw new AppError(
+            "Your account has been deactivated",
+            403
+        );
+    }
+
     const isPasswordCorrect = await bcrypt.compare(
         password,
         user.password

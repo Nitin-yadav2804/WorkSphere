@@ -10,6 +10,30 @@ export const getAdminDashboard = async (req, res) => {
     const totalProjects = await Project.countDocuments();
     const totalTasks = await Task.countDocuments();
 
+    const todoTasks = await Task.countDocuments({
+        status: "todo",
+    });
+
+    const inProgressTasks = await Task.countDocuments({
+        status: "in-progress",
+    });
+
+    const completedTasks = await Task.countDocuments({
+        status: "completed",
+    });
+
+    const activeProjects = await Project.countDocuments({
+        status: "active",
+    });
+
+    const completedProjects = await Project.countDocuments({
+        status: "completed",
+    });
+
+    const archivedProjects = await Project.countDocuments({
+        status: "archived",
+    });
+
     const recentActivity = await Activity.find()
         .populate("user", "name email")
         .populate("workspace", "name")
@@ -20,12 +44,26 @@ export const getAdminDashboard = async (req, res) => {
 
     res.status(200).json({
         success: true,
+
         stats: {
             totalUsers,
             totalWorkspaces,
             totalProjects,
             totalTasks,
         },
+
+        taskStats: {
+            todo: todoTasks,
+            inProgress: inProgressTasks,
+            completed: completedTasks,
+        },
+
+        projectStats: {
+            active: activeProjects,
+            completed: completedProjects,
+            archived: archivedProjects,
+        },
+
         recentActivity,
     });
 };
