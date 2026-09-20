@@ -1,19 +1,30 @@
 import { useEffect, useState } from "react";
+
 import {
   ArrowLeft,
   ClipboardList,
   User,
+  Trash2,
 } from "lucide-react";
+
 import { useNavigate, useParams } from "react-router-dom";
+
 import api from "../../services/api";
+
 import { toast } from "sonner";
 
 function AdminTaskDetails() {
   const { taskId } = useParams();
+
   const navigate = useNavigate();
 
   const [task, setTask] = useState(null);
+
+  const [comments, setComments] = useState([]);
+
   const [loading, setLoading] = useState(true);
+
+  const [commentsLoading, setCommentsLoading] = useState(true);
 
   const fetchTask = async () => {
     try {
@@ -37,8 +48,71 @@ function AdminTaskDetails() {
     }
   };
 
+  const fetchComments = async () => {
+    try {
+      const response = await api.get(
+        `/admin/tasks/${taskId}/comments`
+      );
+
+      setComments(response.data.comments);
+    } catch (error) {
+      console.error(
+        "Failed to fetch comments:",
+        error.response?.data || error.message
+      );
+
+      toast.error(
+        error.response?.data?.message ||
+          "Failed to load comments"
+      );
+    } finally {
+      setCommentsLoading(false);
+    }
+  };
+
+  const handleDeleteComment = async (
+    commentId,
+    commentAuthor
+  ) => {
+    const confirmed = window.confirm(
+      `Are you sure you want to delete this comment by "${commentAuthor}"?`
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      const response = await api.delete(
+        `/admin/comments/${commentId}`
+      );
+
+      toast.success(
+        response.data.message ||
+          "Comment deleted successfully"
+      );
+
+      setComments((currentComments) =>
+        currentComments.filter(
+          (comment) => comment._id !== commentId
+        )
+      );
+    } catch (error) {
+      console.error(
+        "Failed to delete comment:",
+        error.response?.data || error.message
+      );
+
+      toast.error(
+        error.response?.data?.message ||
+          "Failed to delete comment"
+      );
+    }
+  };
+
   useEffect(() => {
     fetchTask();
+    fetchComments();
   }, [taskId]);
 
   if (loading) {
@@ -248,6 +322,92 @@ function AdminTaskDetails() {
               {task.createdBy?.email || "—"}
             </p>
           </div>
+        </div>
+      </div>
+
+      {/* Comments */}
+      <div className="mt-6 rounded-xl border border-slate-200 bg-white md:mt-8">
+        <div className="border-b border-slate-200 px-4 py-5 sm:px-6">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-semibold text-slate-900">
+                Comments
+              </h2>
+
+              <p className="mt-1 text-sm text-slate-500">
+                Manage comments posted on this task.
+              </p>
+            </div>
+
+            <span className="whitespace-nowrap rounded-lg border border-blue-100 bg-blue-50 px-3 py-1.5 text-sm font-medium text-blue-600">
+              {comments.length}{" "}
+              {comments.length === 1
+                ? "comment"
+                : "comments"}
+            </span>
+          </div>
+        </div>
+
+        <div className="p-4 sm:p-6">
+          {commentsLoading ? (
+            <p className="text-sm text-slate-500">
+              Loading comments...
+            </p>
+          ) : comments.length === 0 ? (
+            <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50 p-6 text-center">
+              <p className="text-sm text-slate-500">
+                No comments on this task.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {comments.map((comment) => (
+                <div
+                  key={comment._id}
+                  className="rounded-lg border border-slate-200 p-4"
+                >
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="min-w-0">
+                      <p className="font-medium text-slate-900">
+                        {comment.user?.name ||
+                          "Unknown User"}
+                      </p>
+
+                      <p className="text-xs text-slate-500">
+                        {comment.user?.email || "—"}
+                      </p>
+                    </div>
+
+                    <button
+                      onClick={() =>
+                        handleDeleteComment(
+                          comment._id,
+                          comment.user?.name ||
+                            "Unknown User"
+                        )
+                      }
+                      className="inline-flex w-fit cursor-pointer items-center gap-2 rounded-lg bg-red-50 px-3 py-1.5 text-sm font-medium text-red-600 transition hover:bg-red-100"
+                    >
+                      <Trash2 size={15} />
+                      Delete
+                    </button>
+                  </div>
+
+                  <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-6 text-slate-700">
+                    {comment.content}
+                  </p>
+
+                  <p className="mt-3 text-xs text-slate-400">
+                    {comment.createdAt
+                      ? new Date(
+                          comment.createdAt
+                        ).toLocaleString()
+                      : "—"}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>
