@@ -1,4 +1,5 @@
 import User from "../../models/user.model.js";
+import deleteUserCascade from "../../utils/deleteUserCascade.js";
 
 export const getAllUsers = async (req, res) => {
     const users = await User.find()
@@ -117,6 +118,8 @@ export const deleteUser = async (req, res) => {
             message: "User not found",
         });
     }
+
+    await deleteUserCascade(userId);
 
     await User.findByIdAndDelete(userId);
 

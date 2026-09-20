@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import api from "../../services/api";
-import { Search, Power } from "lucide-react";
+import { Search, Power, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 function AdminUsers() {
@@ -21,7 +21,6 @@ function AdminUsers() {
         : "/admin/users";
 
       const response = await api.get(endpoint);
-
       setUsers(response.data.users);
     } catch (error) {
       console.error(
@@ -95,6 +94,39 @@ function AdminUsers() {
     }
   };
 
+  const handleDeleteUser = async (userId, userName) => {
+    const confirmed = window.confirm(
+      `Are you sure you want to delete "${userName}"? This will permanently delete the user's owned workspaces and related data.`
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      const response = await api.delete(
+        `/admin/users/${userId}`
+      );
+
+      toast.success(
+        response.data.message ||
+          "User deleted successfully"
+      );
+
+      fetchUsers(search);
+    } catch (error) {
+      console.error(
+        "Failed to delete user:",
+        error.response?.data || error.message
+      );
+
+      toast.error(
+        error.response?.data?.message ||
+          "Failed to delete user"
+      );
+    }
+  };
+
   useEffect(() => {
     fetchUsers();
   }, []);
@@ -128,6 +160,7 @@ function AdminUsers() {
                 value={search}
                 onChange={(e) => {
                   const value = e.target.value;
+
                   setSearch(value);
                   fetchUsers(value);
                 }}
@@ -230,22 +263,39 @@ function AdminUsers() {
                           —
                         </span>
                       ) : (
-                        <button
-                          onClick={() =>
-                            handleStatusChange(user._id)
-                          }
-                          className={`inline-flex cursor-pointer items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium transition ${
-                            user.isActive === false
-                              ? "bg-blue-50 text-blue-600 hover:bg-blue-100"
-                              : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                          }`}
-                        >
-                          <Power size={15} />
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() =>
+                              handleStatusChange(
+                                user._id
+                              )
+                            }
+                            className={`inline-flex cursor-pointer items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium transition ${
+                              user.isActive === false
+                                ? "bg-blue-50 text-blue-600 hover:bg-blue-100"
+                                : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                            }`}
+                          >
+                            <Power size={15} />
 
-                          {user.isActive === false
-                            ? "Activate"
-                            : "Deactivate"}
-                        </button>
+                            {user.isActive === false
+                              ? "Activate"
+                              : "Deactivate"}
+                          </button>
+
+                          <button
+                            onClick={() =>
+                              handleDeleteUser(
+                                user._id,
+                                user.name
+                              )
+                            }
+                            className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-red-50 px-3 py-1.5 text-sm font-medium text-red-600 transition hover:bg-red-100"
+                          >
+                            <Trash2 size={15} />
+                            Delete
+                          </button>
+                        </div>
                       )}
                     </td>
                   </tr>
