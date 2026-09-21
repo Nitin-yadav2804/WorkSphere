@@ -186,6 +186,46 @@ export const getProjectFiles = async (req, res, next) => {
     }
 };
 
+export const getTaskFiles = async (req, res, next) => {
+    try {
+        const { taskId } = req.params;
+
+        const task = await Task.findById(taskId).populate(
+            "project",
+            "workspace"
+        );
+
+        if (!task) {
+            throw new AppError("Task not found", 404);
+        }
+
+        const workspace = await Workspace.findOne({
+            _id: task.project.workspace,
+            "members.user": req.user.userId,
+        });
+
+        if (!workspace) {
+            throw new AppError(
+                "You do not have access to this task",
+                403
+            );
+        }
+
+        const files = await File.find({
+            task: taskId,
+        })
+            .populate("uploadedBy", "name email")
+            .sort({ createdAt: -1 });
+
+        return res.status(200).json({
+            success: true,
+            files,
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
 export const getFileAccess = async (req, res, next) => {
     try {
         const { fileId } = req.params;

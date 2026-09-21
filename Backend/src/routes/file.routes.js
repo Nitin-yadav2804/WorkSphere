@@ -1,5 +1,5 @@
 import express from "express";
-import { downloadFile, getFileAccess, getProjectFiles, getWorkspaceFiles, uploadFile } from "../controllers/file.controller.js";
+import { downloadFile, getFileAccess, getProjectFiles, getTaskFiles, getWorkspaceFiles, uploadFile } from "../controllers/file.controller.js";
 import authMiddleware from "../middleware/auth.middleware.js";
 import upload from "../middleware/upload.middleware.js";
 
@@ -34,6 +34,12 @@ router.get(
     "/project/:projectId",
     authMiddleware,
     getProjectFiles
+);
+
+router.get(
+    "/task/:taskId",
+    authMiddleware,
+    getTaskFiles
 );
 
 export default router;
