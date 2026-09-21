@@ -8,6 +8,7 @@ import commentRoutes from "./routes/comment.routes.js";
 import activityRoutes from "./routes/activity.routes.js";
 import cors from "cors";
 import adminRoutes from "./routes/admin.routes.js";
+import fileRoutes from "./routes/file.routes.js";
 
 const app = express();
 
@@ -27,6 +28,7 @@ app.use("/api", projectRoutes);
 app.use("/api", taskRoutes);
 app.use("/api", commentRoutes);
 app.use("/api", activityRoutes);
+app.use("/api/files", fileRoutes);
 
 app.get("/", (req, res) => {
     res.status(200).json({
