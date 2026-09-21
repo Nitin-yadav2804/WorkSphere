@@ -148,6 +148,44 @@ export const getWorkspaceFiles = async (req, res, next) => {
     }
 };
 
+export const getProjectFiles = async (req, res, next) => {
+    try {
+        const { projectId } = req.params;
+
+        const project = await Project.findById(projectId);
+
+        if (!project) {
+            throw new AppError("Project not found", 404);
+        }
+
+        const workspace = await Workspace.findOne({
+            _id: project.workspace,
+            "members.user": req.user.userId,
+        });
+
+        if (!workspace) {
+            throw new AppError(
+                "You do not have access to this project",
+                403
+            );
+        }
+
+        const files = await File.find({
+            project: projectId,
+        })
+            .populate("uploadedBy", "name email")
+            .populate("task", "title")
+            .sort({ createdAt: -1 });
+
+        return res.status(200).json({
+            success: true,
+            files,
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
 export const getFileAccess = async (req, res, next) => {
     try {
         const { fileId } = req.params;
