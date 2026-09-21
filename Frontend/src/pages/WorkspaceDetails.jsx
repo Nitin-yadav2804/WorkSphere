@@ -15,6 +15,7 @@ import {
   Pencil,
   AlertTriangle,
   Loader2,
+  Files,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -33,6 +34,9 @@ import CreateProjectModal from "../components/CreateProjectModal";
 import AddMemberModal from "../components/AddMemberModal";
 import EditWorkspaceModal from "../components/EditWorkspaceModal";
 import EditProjectModal from "../components/EditProjectModal";
+import FileUpload from "../components/files/FileUpload";
+import FileList from "../components/files/FileList";
+import { getWorkspaceFiles } from "../services/fileService";
 
 function WorkspaceDetails() {
   const { workspaceId } = useParams();
@@ -45,6 +49,8 @@ function WorkspaceDetails() {
   const [error, setError] = useState("");
 
   const [activeTab, setActiveTab] = useState("projects");
+
+  const [files, setFiles] = useState([]);
 
   const [showCreateProjectModal, setShowCreateProjectModal] =
     useState(false);
@@ -123,7 +129,22 @@ function WorkspaceDetails() {
   };
 
   useEffect(() => {
-    fetchWorkspace();
+      fetchWorkspace();
+    }, [workspaceId]);
+    useEffect(() => {
+      const loadFiles = async () => {
+          if (!workspaceId) return;
+
+          try {
+              const response = await getWorkspaceFiles(workspaceId);
+
+              setFiles(response.files || []);
+          } catch (error) {
+              console.error("Failed to load workspace files:", error);
+          }
+      };
+
+      loadFiles();
   }, [workspaceId]);
 
   const fetchMembers = async () => {
@@ -588,7 +609,7 @@ function WorkspaceDetails() {
                   setActiveTab("members");
                   setOpenMenu(null);
                 }}
-                className={`relative flex items-center gap-2 border-b-2 px-1 py-4 text-sm font-semibold transition ${
+                className={`cursor-pointer relative flex items-center gap-2 border-b-2 px-1 py-4 text-sm font-semibold transition ${
                   activeTab === "members"
                     ? "border-blue-600 text-blue-600"
                     : "border-transparent text-slate-500 hover:text-slate-700"
@@ -614,7 +635,7 @@ function WorkspaceDetails() {
                   setActiveTab("projects");
                   setOpenMenu(null);
                 }}
-                className={`relative flex items-center gap-2 border-b-2 px-1 py-4 text-sm font-semibold transition ${
+                className={`cursor-pointer relative flex items-center gap-2 border-b-2 px-1 py-4 text-sm font-semibold transition ${
                   activeTab === "projects"
                     ? "border-blue-600 text-blue-600"
                     : "border-transparent text-slate-500 hover:text-slate-700"
@@ -631,6 +652,32 @@ function WorkspaceDetails() {
                   }`}
                 >
                   {projects.length}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab("files");
+                  setOpenMenu(null);
+                }}
+                className={`cursor-pointer relative flex items-center gap-2 border-b-2 px-1 py-4 text-sm font-semibold transition ${
+                  activeTab === "files"
+                    ? "border-blue-600 text-blue-600"
+                    : "border-transparent text-slate-500 hover:text-slate-700"
+                }`}
+              >
+                <Files size={17} />
+                Files
+
+                <span
+                  className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
+                    activeTab === "files"
+                      ? "bg-blue-50 text-blue-600"
+                      : "bg-slate-100 text-slate-500"
+                  }`}
+                >
+                  {files.length}
                 </span>
               </button>
             </div>
@@ -938,6 +985,36 @@ function WorkspaceDetails() {
                   </div>
                 </div>
               )}
+            </div>
+          )}
+
+          {activeTab === "files" && (
+            <div>
+              <div className="flex flex-col gap-4 px-6 py-6 sm:flex-row sm:items-center sm:justify-between sm:px-8">
+                <div>
+                  <h2 className="text-lg font-bold text-slate-900">
+                    Workspace files
+                  </h2>
+
+                  <p className="mt-1 text-sm text-slate-500">
+                    Upload and access files shared in this workspace.
+                  </p>
+                </div>
+
+                <FileUpload
+                    workspaceId={workspaceId}
+                    onUploaded={(uploadedFile) => {
+                        setFiles((currentFiles) => [
+                            uploadedFile,
+                            ...currentFiles,
+                        ]);
+                    }}
+                />
+              </div>
+
+              <div className="border-t border-slate-100 p-6 sm:p-8">
+                <FileList files={files} />
+              </div>
             </div>
           )}
         </div>

@@ -26,9 +26,16 @@ import {
   deleteTask,
 } from "../services/taskService";
 
+import {
+    getProjectFiles,
+} from "../services/fileService";
+
 import CreateTaskModal from "../components/CreateTaskModal";
 import EditProjectModal from "../components/EditProjectModal";
 import EditTaskModal from "../components/EditTaskModal";
+
+import FileUpload from "../components/files/FileUpload";
+import FileList from "../components/files/FileList";
 
 function ProjectDetails() {
   const { projectId } = useParams();
@@ -36,6 +43,7 @@ function ProjectDetails() {
 
   const [project, setProject] = useState(null);
   const [tasks, setTasks] = useState([]);
+  const [files, setFiles] = useState([]);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -93,6 +101,11 @@ function ProjectDetails() {
               new Date(b.createdAt)
           )
         );
+
+        const filesResponse = await getProjectFiles(projectId);
+
+        setFiles(filesResponse.files || []);
+
       } catch (error) {
         console.error(
           "Failed to fetch project:",
@@ -779,6 +792,35 @@ function ProjectDetails() {
             </div>
           </div>
         </div>
+
+        <div className="mt-8 rounded-xl border border-slate-200 bg-white">
+              <div className="flex flex-col gap-4 border-b border-slate-100 px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                      <h2 className="text-lg font-bold text-slate-900">
+                          Project files
+                      </h2>
+
+                      <p className="mt-1 text-sm text-slate-500">
+                          Upload and access files shared with this project.
+                      </p>
+                  </div>
+
+                  <FileUpload
+                      workspaceId={project.workspace?._id || project.workspace}
+                      projectId={project._id}
+                      onUploaded={(uploadedFile) => {
+                          setFiles((currentFiles) => [
+                              uploadedFile,
+                              ...currentFiles,
+                          ]);
+                      }}
+                  />
+              </div>
+
+              <div className="p-6">
+                  <FileList files={files} />
+              </div>
+          </div>
 
         <div className="mt-6 overflow-visible rounded-2xl border border-slate-200 bg-white shadow-sm">
           <div className="flex flex-col gap-4 border-b border-slate-100 px-6 py-6 sm:flex-row sm:items-center sm:justify-between sm:px-8">

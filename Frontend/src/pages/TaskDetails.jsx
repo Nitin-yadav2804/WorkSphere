@@ -23,8 +23,15 @@ import {
   deleteTask,
 } from "../services/taskService";
 
+import {
+  getTaskFiles,
+} from "../services/fileService";
+
 import TaskComments from "../components/TaskComments";
 import EditTaskModal from "../components/EditTaskModal";
+
+import FileUpload from "../components/files/FileUpload";
+import FileList from "../components/files/FileList";
 
 function TaskDetails() {
   const { taskId } = useParams();
@@ -33,6 +40,7 @@ function TaskDetails() {
   const [task, setTask] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [files, setFiles] = useState([]);
 
   const [showEditModal, setShowEditModal] =
     useState(false);
@@ -91,6 +99,11 @@ function TaskDetails() {
         }
 
         setTask(completeTask);
+
+        const filesResponse = await getTaskFiles(taskId);
+
+        setFiles(filesResponse.files || []);
+
       } catch (error) {
         console.error(
           "Failed to fetch task:",
@@ -545,6 +558,39 @@ function TaskDetails() {
 
           </div>
 
+        </div>
+
+        <div className="mt-8 w-full rounded-xl border border-slate-200 bg-white">
+          <div className="flex flex-col gap-4 border-b border-slate-100 px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                  <h2 className="text-lg font-bold text-slate-900">
+                      Task files
+                  </h2>
+
+                  <p className="mt-1 text-sm text-slate-500">
+                      Upload and access files attached to this task.
+                  </p>
+              </div>
+
+              <FileUpload
+                  workspaceId={
+                      task.project?.workspace?._id ||
+                      task.project?.workspace
+                  }
+                  projectId={task.project?._id || task.project}
+                  taskId={task._id}
+                  onUploaded={(uploadedFile) => {
+                      setFiles((currentFiles) => [
+                          uploadedFile,
+                          ...currentFiles,
+                      ]);
+                  }}
+              />
+          </div>
+
+          <div className="p-6">
+              <FileList files={files} />
+          </div>
         </div>
 
         <TaskComments taskId={taskId} />
