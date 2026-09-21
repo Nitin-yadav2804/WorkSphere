@@ -94,5 +94,22 @@ export const getStorageUrl = async (key) => {
 };
 
 export const getLocalFilePath = (key) => {
-    return path.join(uploadDirectory, key);
+    const filePath = path.resolve(
+        uploadDirectory,
+        key
+    );
+
+    const resolvedUploadDirectory = path.resolve(
+        uploadDirectory
+    );
+
+    if (
+        !filePath.startsWith(
+            `${resolvedUploadDirectory}${path.sep}`
+        )
+    ) {
+        throw new Error("Invalid storage key");
+    }
+
+    return filePath;
 };
