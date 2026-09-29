@@ -9,8 +9,10 @@ import activityRoutes from "./routes/activity.routes.js";
 import cors from "cors";
 import adminRoutes from "./routes/admin.routes.js";
 import fileRoutes from "./routes/file.routes.js";
+import connectDB from "./config/db.js";
 
 const app = express();
+connectDB();
 
 app.use(express.json());
 
