@@ -9,7 +9,7 @@ import {
   deleteAdminProject,
 } from "../../services/adminService.js";
 import { getErrorDetails, getErrorMessage } from "../../utils/errors.js";
-import LoadingState from "../../components/ui/LoadingState.jsx";
+import PageLoading from "../../components/ui/PageLoading.jsx";
 
 function AdminProjects() {
   const [projects, setProjects] = useState([]);
@@ -109,12 +109,9 @@ function AdminProjects() {
       {/* Projects Table */}
       <div className="mt-6 overflow-hidden rounded-xl border border-slate-200 bg-white">
         {loading ? (
-          <LoadingState
-            as="div"
-            className="px-6 py-10 text-center text-sm text-slate-500"
-          >
+          <PageLoading>
             Loading projects...
-          </LoadingState>
+          </PageLoading>
         ) : filteredProjects.length === 0 ? (
           <div className="px-6 py-10 text-center text-sm text-slate-500">
             No projects found.

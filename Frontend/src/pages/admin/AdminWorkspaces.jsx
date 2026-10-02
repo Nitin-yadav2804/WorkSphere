@@ -9,7 +9,7 @@ import {
   deleteAdminWorkspace,
 } from "../../services/adminService.js";
 import { getErrorDetails, getErrorMessage } from "../../utils/errors.js";
-import LoadingState from "../../components/ui/LoadingState.jsx";
+import PageLoading from "../../components/ui/PageLoading.jsx";
 
 function AdminWorkspaces() {
   const [workspaces, setWorkspaces] = useState([]);
@@ -79,9 +79,9 @@ function AdminWorkspaces() {
       </p>
 
       {loading ? (
-        <LoadingState as="p" className="mt-8 text-slate-500">
+        <PageLoading>
           Loading workspaces...
-        </LoadingState>
+        </PageLoading>
       ) : (
         <div className="mt-6 overflow-hidden rounded-xl border border-slate-200 bg-white sm:mt-8">
           {/* Search */}
