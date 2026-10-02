@@ -5,7 +5,10 @@ import { toast } from "sonner";
 import { saveBlob } from "../../utils/download.js";
 import ModalFrame from "../ui/ModalFrame.jsx";
 import Spinner from "../ui/Spinner.jsx";
-import { getFileAccess, downloadFile } from "../../services/fileService";
+import {
+  getFileAccess,
+  downloadFile,
+} from "../../services/fileService";
 
 function FilePreviewModal({ file, onClose }) {
   const [loading, setLoading] = useState(true);

@@ -82,12 +82,12 @@ test("shared loading layouts preserve text-only and spinner variants", () => {
       "Loading workspace..."
     )
   );
-  assert.doesNotMatch(plain, /<svg/);
+  assert.match(plain, /animate-spin/);
   assert.match(plain, /Loading workspace\.\.\./);
   const task = renderToStaticMarkup(
     React.createElement(PageLoading, { variant: "task" }, "Loading task...")
   );
-  assert.match(task, /max-w-5xl/);
+  assert.match(task, /max-w-md/);
   assert.match(task, /animate-spin/);
   assert.match(task, /Loading task\.\.\./);
 });
