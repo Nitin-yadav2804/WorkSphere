@@ -16,6 +16,8 @@ It provides authentication, workspace and member management, project and task ma
 - Password hashing using bcrypt
 - Protected API routes
 - User profile retrieval
+- Update profile name and email
+- Change password
 - Authentication middleware
 
 ### 🏢 Workspace Management
@@ -126,8 +128,17 @@ The Settings page provides:
 - User name
 - User email
 - User role
-- Security section
+- Edit profile name and email
+- Change password with current-password verification
 - Logout functionality
+
+### 📎 File Attachments
+
+- Upload files to workspaces, projects, and tasks
+- File metadata stored in MongoDB
+- MIME type and 10 MB size validation
+- Access checks before download or preview
+- Cloudflare R2 signed URLs through the backend
 
 ---
 
@@ -206,7 +217,7 @@ WorkSphere/
 │       ├── pages/
 │       ├── services/
 │       ├── routes/
-│       ├── redux/
+│       ├── store/
 │       ├── App.jsx
 │       └── main.jsx
 │
@@ -219,8 +230,7 @@ WorkSphere/
 │       ├── routes/
 │       ├── validators/
 │       ├── utils/
-│       ├── app.js
-│       └── server.js
+│       └── app.js
 │
 ├── .gitignore
 └── README.md
@@ -304,6 +314,8 @@ http://localhost:3000/api
 POST   /auth/register
 POST   /auth/login
 GET    /auth/profile
+PATCH  /auth/profile
+PATCH  /auth/password
 ```
 
 ### Workspaces
@@ -359,6 +371,15 @@ PATCH  /comments/:commentId
 DELETE /comments/:commentId
 ```
 
+### Files
+
+```text
+GET    /files
+POST   /files
+GET    /files/:fileId
+DELETE /files/:fileId
+```
+
 ---
 
 ## 🧩 Data Models
@@ -372,6 +393,7 @@ Project
 Task
 Comment
 Activity
+File
 ```
 
 Relationships:
@@ -409,6 +431,7 @@ Validation is implemented for:
 - Projects
 - Tasks
 - Comments
+- Files
 
 The backend also includes:
 
@@ -433,6 +456,7 @@ The application validates:
 - Task access
 - Task assignment
 - Comment ownership
+- File access and attachment ownership
 
 Task assignment also verifies that the assigned user belongs to the corresponding workspace.
 
@@ -456,6 +480,7 @@ The frontend follows a modern SaaS-style interface.
 ### User Experience
 
 - Loading states
+- Consistent page loading states
 - Empty states
 - Error states
 - Toast notifications
@@ -465,6 +490,7 @@ The frontend follows a modern SaaS-style interface.
 - Modal-based task editing
 - Task details pages
 - Dashboard overview
+- File upload and preview components
 
 ---
 
@@ -481,6 +507,11 @@ The current application includes:
 /projects/:projectId
 /tasks/:taskId
 /settings
+/activity
+/admin/users
+/admin/workspaces
+/admin/projects
+/admin/tasks
 ```
 
 ---
@@ -509,6 +540,8 @@ Open Task Details
 Add / Edit / Delete Comments
        ↓
 Track Activity
+       ↓
+Upload and preview workspace, project, and task files
 ```
 
 ---
@@ -536,6 +569,8 @@ This project demonstrates practical full-stack development concepts including:
 - Reusable modals
 - API integration
 - Loading and error handling
+- Consistent reusable frontend utilities
+- Cloudflare R2 object storage integration
 - Responsive UI development
 - SaaS dashboard architecture
 
@@ -587,6 +622,14 @@ Add:
 PORT=3000
 MONGO_URI=your_mongodb_connection_string
 JWT_SECRET=your_jwt_secret
+FRONTEND_URL=http://localhost:5173
+
+# File storage (backend only)
+STORAGE_PROVIDER=r2
+R2_ACCOUNT_ID=your_cloudflare_account_id
+R2_ACCESS_KEY_ID=your_r2_access_key_id
+R2_SECRET_ACCESS_KEY=your_r2_secret_access_key
+R2_BUCKET_NAME=your_r2_bucket_name
 ```
 
 Do not commit `.env` files to the repository.
@@ -606,6 +649,27 @@ Frontend runs on:
 ```text
 http://localhost:5173
 ```
+
+### Frontend API configuration
+
+For local development the frontend uses `http://localhost:3000` by default. Set `VITE_API_URL` when the API is hosted elsewhere.
+
+### Testing
+
+```bash
+cd Backend
+npm test
+
+cd ../Frontend
+npm test
+npm run build
+```
+
+The current test suites use mocks and do not require a live MongoDB connection.
+
+### Deployment
+
+The frontend is configured as a Vercel single-page application through `Frontend/vercel.json`. Set the Vercel project root to `Frontend` and configure `VITE_API_URL` with the deployed backend URL. Configure `FRONTEND_URL`, MongoDB, JWT, and R2 variables on the backend deployment. R2 credentials remain server-side and are never exposed to the frontend.
 
 ---
 
