@@ -76,20 +76,43 @@ export const initializeSocket = (httpServer) => {
             }
         });
 
-        socket.on("chat:send", async ({ workspaceId, content }, callback) => {
+        socket.on("join:project", async (projectId, callback) => {
             try {
+                const project = await Project.findById(projectId).select("workspace");
+                if (!project) throw new Error("Project not found");
+                await requireWorkspaceAccess(project.workspace, socket.user.userId, {
+                    message: "Project not found or access denied",
+                    statusCode: 403,
+                });
+                socket.join(`project:${projectId}`);
+                callback?.({ success: true });
+            } catch (error) {
+                callback?.({ success: false, message: error.message });
+            }
+        });
+
+        socket.on("chat:send", async ({ workspaceId, projectId, content }, callback) => {
+            try {
+                let targetRoom = `workspace:${workspaceId}`;
                 await requireWorkspaceAccess(workspaceId, socket.user.userId, {
                     message: "Workspace not found or access denied",
                     statusCode: 403,
                 });
 
+                if (projectId) {
+                    const project = await Project.findOne({ _id: projectId, workspace: workspaceId }).select("_id");
+                    if (!project) throw new Error("Project not found or access denied");
+                    targetRoom = `project:${projectId}`;
+                }
+
                 const message = await Message.create({
                     content: String(content || "").trim(),
                     workspace: workspaceId,
+                    project: projectId || undefined,
                     user: socket.user.userId,
                 });
                 await message.populate("user", "name email");
-                emitWorkspaceMessage(workspaceId, message);
+                io?.to(targetRoom).emit("chat:message", message);
                 callback?.({ success: true, message });
             } catch (error) {
                 callback?.({ success: false, message: error.message });
@@ -126,6 +149,18 @@ export const emitWorkspaceMessage = (workspaceId, message) => {
 
 export const emitWorkspaceActivity = (workspaceId, activity) => {
     io?.to(`workspace:${workspaceId}`).emit("activity:created", activity);
+};
+
+export const emitProjectMessage = (projectId, message) => {
+    io?.to(`project:${projectId}`).emit("chat:message", message);
+};
+
+export const emitProjectTask = (projectId, event, task) => {
+    io?.to(`project:${projectId}`).emit(`project:task:${event}`, task);
+};
+
+export const emitProjectUpdate = (projectId, project) => {
+    io?.to(`project:${projectId}`).emit("project:updated", project);
 };
 
 export const emitWorkspacePresence = (workspaceId) => {

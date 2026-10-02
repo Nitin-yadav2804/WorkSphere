@@ -37,6 +37,8 @@ import EditProjectModal from "../components/EditProjectModal";
 import EditTaskModal from "../components/EditTaskModal";
 import FileUpload from "../components/files/FileUpload";
 import FileList from "../components/files/FileList";
+import WorkspaceChat from "../components/WorkspaceChat";
+import { getSocket } from "../services/socket.js";
 
 function ProjectDetails() {
   const { projectId } = useParams();
@@ -98,6 +100,40 @@ function ProjectDetails() {
     };
 
     fetchProject();
+  }, [projectId]);
+
+  useEffect(() => {
+    const socket = getSocket();
+    if (!socket) return undefined;
+
+    const handleTaskCreated = (task) => {
+      setTasks((current) => {
+        if (current.some((item) => item._id === task._id)) return current;
+        return [...current, task].sort(byCreatedAtAscending);
+      });
+    };
+    const handleTaskUpdated = (task) => {
+      setTasks((current) => current.map((item) => item._id === task._id ? { ...item, ...task } : item));
+    };
+    const handleTaskDeleted = ({ _id }) => {
+      setTasks((current) => current.filter((item) => item._id !== _id));
+    };
+    const handleProjectUpdated = (updatedProject) => {
+      setProject((current) => current ? { ...current, ...updatedProject, workspace: current.workspace } : current);
+    };
+
+    socket.emit("join:project", projectId);
+    socket.on("project:task:created", handleTaskCreated);
+    socket.on("project:task:updated", handleTaskUpdated);
+    socket.on("project:task:deleted", handleTaskDeleted);
+    socket.on("project:updated", handleProjectUpdated);
+
+    return () => {
+      socket.off("project:task:created", handleTaskCreated);
+      socket.off("project:task:updated", handleTaskUpdated);
+      socket.off("project:task:deleted", handleTaskDeleted);
+      socket.off("project:updated", handleProjectUpdated);
+    };
   }, [projectId]);
 
   const handleProjectUpdated = (updatedProject) => {
@@ -675,6 +711,13 @@ function ProjectDetails() {
               ))}
             </div>
           )}
+        </div>
+
+        <div className="mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <WorkspaceChat
+            workspaceId={project.workspace?._id || project.workspace}
+            projectId={project._id}
+          />
         </div>
       </div>
 

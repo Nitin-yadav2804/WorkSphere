@@ -11,3 +11,13 @@ export const createWorkspaceMessage = async (workspaceId, content) => {
   });
   return response.data;
 };
+
+export const getProjectMessages = async (projectId) => {
+  const response = await api.get(`/projects/${projectId}/messages`);
+  return response.data;
+};
+
+export const createProjectMessage = async (projectId, content) => {
+  const response = await api.post(`/projects/${projectId}/messages`, { content });
+  return response.data;
+};

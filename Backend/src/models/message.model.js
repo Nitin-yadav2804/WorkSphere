@@ -14,6 +14,11 @@ const messageSchema = new mongoose.Schema(
             required: true,
             index: true,
         },
+        project: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Project",
+            index: true,
+        },
         user: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "User",

@@ -4,7 +4,9 @@ import validate from "../middleware/validate.middleware.js";
 import asyncHandler from "../utils/asyncHandler.js";
 import { createMessageSchema } from "../validators/message.validator.js";
 import {
+    createProjectMessage,
     createWorkspaceMessage,
+    getProjectMessages,
     getWorkspaceMessages,
 } from "../controllers/message.controller.js";
 
@@ -20,6 +22,17 @@ router.post(
     authMiddleware,
     validate(createMessageSchema),
     asyncHandler(createWorkspaceMessage)
+);
+router.get(
+    "/projects/:projectId/messages",
+    authMiddleware,
+    asyncHandler(getProjectMessages)
+);
+router.post(
+    "/projects/:projectId/messages",
+    authMiddleware,
+    validate(createMessageSchema),
+    asyncHandler(createProjectMessage)
 );
 
 export default router;

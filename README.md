@@ -147,7 +147,9 @@ The Settings page provides:
 - Live task comment create, edit, and delete events
 - Live workspace activity updates
 - Workspace online count and chat typing indicator
+- Live project task creation, editing, and deletion updates
 - Workspace chat with persisted messages
+- Project chat with persisted messages
 - Workspace membership checks before joining realtime rooms
 
 ---
@@ -395,6 +397,8 @@ DELETE /files/:fileId
 ```text
 GET    /workspaces/:workspaceId/messages
 POST   /workspaces/:workspaceId/messages
+GET    /projects/:projectId/messages
+POST   /projects/:projectId/messages
 ```
 
 Socket.IO clients authenticate with the same JWT and join authorized `workspace:<workspaceId>` or `task:<taskId>` rooms. Chat messages and comment changes are persisted through the REST API and broadcast to connected members.

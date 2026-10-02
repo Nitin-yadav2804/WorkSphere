@@ -3,6 +3,7 @@ import { requireWorkspaceAccess } from "../utils/workspaceAccess.js";
 import Project from "../models/project.model.js";
 import createActivity from "../utils/createActivity.js";
 import deleteProjectCascade from "../utils/deleteProjectCascade.js";
+import { emitProjectUpdate } from "../realtime/socket.js";
 
 export const createProject = async (req, res) => {
     const { workspaceId } = req.params;
@@ -30,6 +31,7 @@ export const createProject = async (req, res) => {
         workspace: workspace._id,
         project: project._id,
     });
+    emitProjectUpdate(project._id, project);
 
     res.status(201).json({
         success: true,
@@ -125,6 +127,7 @@ export const updateProject = async (req, res) => {
         workspace: workspace._id,
         project: project._id,
     });
+    emitProjectUpdate(project._id, project);
 
     res.status(200).json({
         success: true,

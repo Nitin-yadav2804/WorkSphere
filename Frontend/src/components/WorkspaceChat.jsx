@@ -5,11 +5,18 @@ import { useSelector } from "react-redux";
 
 import LoadingState from "./ui/LoadingState.jsx";
 import { getErrorMessage } from "../utils/errors.js";
-import { getWorkspaceMessages, createWorkspaceMessage } from "../services/messageService.js";
+import {
+  getWorkspaceMessages,
+  createWorkspaceMessage,
+  getProjectMessages,
+  createProjectMessage,
+} from "../services/messageService.js";
 import { getSocket } from "../services/socket.js";
 import { formatCommentDate } from "../utils/dates.js";
 
-function WorkspaceChat({ workspaceId }) {
+function WorkspaceChat({ workspaceId, projectId }) {
+  const isProjectChat = Boolean(projectId);
+  const scopeId = projectId || workspaceId;
   const currentUser = useSelector((state) => state.auth.user);
   const [messages, setMessages] = useState([]);
   const [content, setContent] = useState("");
@@ -24,7 +31,9 @@ function WorkspaceChat({ workspaceId }) {
     let active = true;
     const loadMessages = async () => {
       try {
-        const response = await getWorkspaceMessages(workspaceId);
+        const response = isProjectChat
+          ? await getProjectMessages(projectId)
+          : await getWorkspaceMessages(workspaceId);
         if (active) setMessages(response.messages || []);
       } catch (error) {
         toast.error(getErrorMessage(error, "Failed to load chat."));
@@ -49,7 +58,7 @@ function WorkspaceChat({ workspaceId }) {
       if (String(userId) !== String(currentUser?._id)) setSomeoneTyping(Boolean(isTyping));
     };
 
-    socket.emit("join:workspace", workspaceId);
+    socket.emit(isProjectChat ? "join:project" : "join:workspace", scopeId);
     socket.on("chat:message", handleMessage);
     socket.on("workspace:presence", handlePresence);
     socket.on("chat:typing", handleTyping);
@@ -61,13 +70,14 @@ function WorkspaceChat({ workspaceId }) {
       socket.off("chat:typing", handleTyping);
       clearTimeout(typingTimeoutRef.current);
     };
-  }, [workspaceId]);
+  }, [workspaceId, projectId, isProjectChat, scopeId]);
 
   const handleTyping = (event) => {
     setContent(event.target.value);
     const socket = getSocket();
     if (!socket?.connected) return;
 
+    if (isProjectChat) return;
     socket.emit("chat:typing", { workspaceId, isTyping: true });
     clearTimeout(typingTimeoutRef.current);
     typingTimeoutRef.current = setTimeout(() => {
@@ -89,13 +99,15 @@ function WorkspaceChat({ workspaceId }) {
       const socket = getSocket();
       if (socket?.connected) {
         await new Promise((resolve, reject) => {
-          socket.emit("chat:send", { workspaceId, content: trimmed }, (result) => {
+          socket.emit("chat:send", { workspaceId, projectId, content: trimmed }, (result) => {
             if (result?.success) resolve(result);
             else reject(new Error(result?.message || "Failed to send message."));
           });
         });
       } else {
-        const response = await createWorkspaceMessage(workspaceId, trimmed);
+        const response = isProjectChat
+          ? await createProjectMessage(projectId, trimmed)
+          : await createWorkspaceMessage(workspaceId, trimmed);
         setMessages((current) => current.some((item) => item._id === response.message._id) ? current : [...current, response.message]);
       }
       setContent("");
@@ -113,8 +125,8 @@ function WorkspaceChat({ workspaceId }) {
           <MessageCircle size={19} />
         </div>
         <div>
-          <h2 className="text-lg font-bold text-slate-900">Workspace chat</h2>
-          <p className="text-sm text-slate-500">{onlineCount} online · Talk with everyone in this workspace.</p>
+          <h2 className="text-lg font-bold text-slate-900">{isProjectChat ? "Project chat" : "Workspace chat"}</h2>
+          <p className="text-sm text-slate-500">{isProjectChat ? "Discuss this project with your team." : `${onlineCount} online · Talk with everyone in this workspace.`}</p>
         </div>
       </div>
 

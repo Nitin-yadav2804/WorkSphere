@@ -5,6 +5,7 @@ import Project from "../models/project.model.js";
 import AppError from "../utils/AppError.js";
 import createActivity from "../utils/createActivity.js";
 import deleteTaskCascade from "../utils/deleteTaskCascade.js";
+import { emitProjectTask } from "../realtime/socket.js";
 
 export const createTask = async (req, res) => {
     const { projectId } = req.params;
@@ -58,6 +59,7 @@ export const createTask = async (req, res) => {
         project: project._id,
         task: task._id,
     });
+    emitProjectTask(project._id, "created", task);
 
     res.status(201).json({
         success: true,
@@ -185,6 +187,7 @@ export const updateTask = async (req, res) => {
         project: project._id,
         task: task._id,
     });
+    emitProjectTask(project._id, "updated", task);
 
     res.status(200).json({
         success: true,
@@ -219,6 +222,7 @@ export const deleteTask = async (req, res) => {
     );
 
     await deleteTaskCascade(taskId);
+    emitProjectTask(project._id, "deleted", { _id: taskId });
 
     await createActivity({
         action: "task_deleted",
