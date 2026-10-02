@@ -1,4 +1,5 @@
 import "dotenv/config";
+import { createServer } from "node:http";
 import express from "express";
 import cors from "cors";
 import authRoutes from "./routes/auth.routes.js";
@@ -10,7 +11,9 @@ import commentRoutes from "./routes/comment.routes.js";
 import activityRoutes from "./routes/activity.routes.js";
 import adminRoutes from "./routes/admin.routes.js";
 import fileRoutes from "./routes/file.routes.js";
+import messageRoutes from "./routes/message.routes.js";
 import connectDB from "./config/db.js";
+import { initializeSocket } from "./realtime/socket.js";
 
 const PORT = process.env.PORT || 3000;
 const app = express();
@@ -37,6 +40,7 @@ app.use("/api", taskRoutes);
 app.use("/api", commentRoutes);
 app.use("/api", activityRoutes);
 app.use("/api/files", fileRoutes);
+app.use("/api", messageRoutes);
 
 app.get("/", (req, res) => {
   res.status(200).json({
@@ -47,8 +51,11 @@ app.get("/", (req, res) => {
 
 app.use(errorMiddleware);
 
+const httpServer = createServer(app);
+initializeSocket(httpServer);
+
 await connectDB();
 
-app.listen(PORT, () => {
+httpServer.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });

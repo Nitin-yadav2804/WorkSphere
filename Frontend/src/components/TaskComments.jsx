@@ -12,6 +12,7 @@ import {
   updateComment,
   deleteComment,
 } from "../services/commentService";
+import { getSocket } from "../services/socket.js";
 
 function TaskComments({ taskId }) {
   const [comments, setComments] = useState([]);
@@ -43,6 +44,29 @@ function TaskComments({ taskId }) {
     };
 
     fetchComments();
+
+    const socket = getSocket();
+    if (!socket) return undefined;
+
+    const upsertComment = (comment) => {
+      setComments((current) => {
+        const existing = current.findIndex((item) => item._id === comment._id);
+        if (existing === -1) return [...current, comment];
+        return current.map((item) => (item._id === comment._id ? comment : item));
+      });
+    };
+    const removeComment = ({ _id }) => setComments((current) => current.filter((item) => item._id !== _id));
+
+    socket.emit("join:task", taskId);
+    socket.on("comment:created", upsertComment);
+    socket.on("comment:updated", upsertComment);
+    socket.on("comment:deleted", removeComment);
+
+    return () => {
+      socket.off("comment:created", upsertComment);
+      socket.off("comment:updated", upsertComment);
+      socket.off("comment:deleted", removeComment);
+    };
   }, [taskId]);
 
   const handleSubmit = async (event) => {
@@ -59,7 +83,11 @@ function TaskComments({ taskId }) {
         content: content.trim(),
       });
 
-      setComments((current) => [...current, response.comment]);
+      setComments((current) =>
+        current.some((comment) => comment._id === response.comment._id)
+          ? current
+          : [...current, response.comment]
+      );
 
       setContent("");
 

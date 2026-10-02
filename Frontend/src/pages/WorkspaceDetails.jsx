@@ -15,6 +15,7 @@ import {
   Pencil,
   AlertTriangle,
   Files,
+  MessageCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -48,6 +49,7 @@ import EditProjectModal from "../components/EditProjectModal";
 import FileUpload from "../components/files/FileUpload";
 import FileList from "../components/files/FileList";
 import { getWorkspaceFiles } from "../services/fileService";
+import WorkspaceChat from "../components/WorkspaceChat";
 
 function WorkspaceDetails() {
   const { workspaceId } = useParams();
@@ -454,6 +456,7 @@ function WorkspaceDetails() {
                 <Trash2 size={16} />
                 Delete
               </button>
+
             </div>
           </div>
         </div>
@@ -534,6 +537,21 @@ function WorkspaceDetails() {
                 >
                   {files.length}
                 </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab("chat");
+                  setOpenMenu(null);
+                }}
+                className={`cursor-pointer relative flex items-center gap-2 border-b-2 px-1 py-4 text-sm font-semibold transition ${
+                  activeTab === "chat"
+                    ? "border-blue-600 text-blue-600"
+                    : "border-transparent text-slate-500 hover:text-slate-700"
+                }`}
+              >
+                <MessageCircle size={17} />
+                Chat
               </button>
             </div>
           </div>
@@ -838,6 +856,8 @@ function WorkspaceDetails() {
               </div>
             </div>
           )}
+
+          {activeTab === "chat" && <WorkspaceChat workspaceId={workspaceId} />}
         </div>
       </div>
 

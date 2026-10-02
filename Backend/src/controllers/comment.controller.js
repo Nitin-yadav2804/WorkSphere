@@ -6,6 +6,7 @@ import Project from "../models/project.model.js";
 import Workspace from "../models/workspace.model.js";
 import AppError from "../utils/AppError.js";
 import createActivity from "../utils/createActivity.js";
+import { emitTaskComment } from "../realtime/socket.js";
 
 export const createComment = async (req, res) => {
     const { taskId } = req.params;
@@ -36,6 +37,7 @@ export const createComment = async (req, res) => {
     });
 
     await comment.populate("user", "name email");
+    emitTaskComment(taskId, "created", comment);
 
     await createActivity({
         action: "comment_created",
@@ -104,6 +106,7 @@ export const updateComment = async (req, res) => {
     await comment.save();
 
     await comment.populate("user", "name email");
+    emitTaskComment(comment.task, "updated", comment);
 
     const task = await Task.findById(comment.task);
     const project = await Project.findById(task.project);
@@ -157,6 +160,7 @@ export const deleteComment = async (req, res) => {
     );
 
     await Comment.findByIdAndDelete(commentId);
+    emitTaskComment(task._id, "deleted", { _id: commentId });
 
     await createActivity({
         action: "comment_deleted",

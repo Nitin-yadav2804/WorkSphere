@@ -140,6 +140,13 @@ The Settings page provides:
 - Access checks before download or preview
 - Cloudflare R2 signed URLs through the backend
 
+### 💬 Realtime Collaboration
+
+- Socket.IO connection authenticated with the existing JWT
+- Live task comment create, edit, and delete events
+- Workspace chat with persisted messages
+- Workspace membership checks before joining realtime rooms
+
 ---
 
 ## 🛠️ Tech Stack
@@ -380,6 +387,15 @@ GET    /files/:fileId
 DELETE /files/:fileId
 ```
 
+### Workspace Chat
+
+```text
+GET    /workspaces/:workspaceId/messages
+POST   /workspaces/:workspaceId/messages
+```
+
+Socket.IO clients authenticate with the same JWT and join authorized `workspace:<workspaceId>` or `task:<taskId>` rooms. Chat messages and comment changes are persisted through the REST API and broadcast to connected members.
+
 ---
 
 ## 🧩 Data Models
@@ -571,6 +587,7 @@ This project demonstrates practical full-stack development concepts including:
 - Loading and error handling
 - Consistent reusable frontend utilities
 - Cloudflare R2 object storage integration
+- Socket.IO realtime collaboration
 - Responsive UI development
 - SaaS dashboard architecture
 
