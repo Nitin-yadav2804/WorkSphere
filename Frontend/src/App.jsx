@@ -1,6 +1,8 @@
 import { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Toaster } from "sonner";
+
+import { getErrorDetails } from "./utils/errors.js";
 import AppRoutes from "./routes/AppRoutes";
 import { getProfile } from "./services/authService";
 import { setCredentials, logout } from "./store/authSlice";
@@ -23,10 +25,7 @@ function App() {
           })
         );
       } catch (error) {
-        console.error(
-          "Failed to load profile:",
-          error.response?.data || error.message
-        );
+        console.error("Failed to load profile:", getErrorDetails(error));
 
         dispatch(logout());
       }

@@ -1,14 +1,11 @@
 import { useEffect, useState } from "react";
 import { useSelector } from "react-redux";
-import {
-  MessageSquare,
-  Send,
-  Trash2,
-  Pencil,
-  X,
-  Check,
-} from "lucide-react";
+import { MessageSquare, Send, Trash2, Pencil, X, Check } from "lucide-react";
 import { toast } from "sonner";
+
+import { formatCommentDate } from "../utils/dates.js";
+import { getErrorDetails, getErrorMessage } from "../utils/errors.js";
+import LoadingState from "./ui/LoadingState.jsx";
 import {
   getTaskComments,
   createComment,
@@ -22,37 +19,24 @@ function TaskComments({ taskId }) {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
-  const [editingCommentId, setEditingCommentId] =
-    useState(null);
-  const [editingContent, setEditingContent] =
-    useState("");
-  const [updatingComment, setUpdatingComment] =
-    useState(false);
+  const [editingCommentId, setEditingCommentId] = useState(null);
+  const [editingContent, setEditingContent] = useState("");
+  const [updatingComment, setUpdatingComment] = useState(false);
 
-  const currentUser = useSelector(
-    (state) => state.auth.user
-  );
+  const currentUser = useSelector((state) => state.auth.user);
 
   useEffect(() => {
     const fetchComments = async () => {
       try {
         setLoading(true);
 
-        const response =
-          await getTaskComments(taskId);
+        const response = await getTaskComments(taskId);
 
         setComments(response.comments || []);
       } catch (error) {
-        console.error(
-          "Failed to fetch comments:",
-          error.response?.data ||
-            error.message
-        );
+        console.error("Failed to fetch comments:", getErrorDetails(error));
 
-        toast.error(
-          error.response?.data?.message ||
-            "Failed to load comments."
-        );
+        toast.error(getErrorMessage(error, "Failed to load comments."));
       } finally {
         setLoading(false);
       }
@@ -71,30 +55,19 @@ function TaskComments({ taskId }) {
     try {
       setSubmitting(true);
 
-      const response =
-        await createComment(taskId, {
-          content: content.trim(),
-        });
+      const response = await createComment(taskId, {
+        content: content.trim(),
+      });
 
-      setComments((current) => [
-        ...current,
-        response.comment,
-      ]);
+      setComments((current) => [...current, response.comment]);
 
       setContent("");
 
       toast.success("Comment added");
     } catch (error) {
-      console.error(
-        "Failed to create comment:",
-        error.response?.data ||
-          error.message
-      );
+      console.error("Failed to create comment:", getErrorDetails(error));
 
-      toast.error(
-        error.response?.data?.message ||
-          "Failed to add comment."
-      );
+      toast.error(getErrorMessage(error, "Failed to add comment."));
     } finally {
       setSubmitting(false);
     }
@@ -113,32 +86,20 @@ function TaskComments({ taskId }) {
       await deleteComment(commentId);
 
       setComments((current) =>
-        current.filter(
-          (comment) =>
-            comment._id !== commentId
-        )
+        current.filter((comment) => comment._id !== commentId)
       );
 
       toast.success("Comment deleted");
     } catch (error) {
-      console.error(
-        "Failed to delete comment:",
-        error.response?.data ||
-          error.message
-      );
+      console.error("Failed to delete comment:", getErrorDetails(error));
 
-      toast.error(
-        error.response?.data?.message ||
-          "Failed to delete comment."
-      );
+      toast.error(getErrorMessage(error, "Failed to delete comment."));
     }
   };
 
   const handleEdit = (comment) => {
     setEditingCommentId(comment._id);
-    setEditingContent(
-      comment.content || ""
-    );
+    setEditingContent(comment.content || "");
   };
 
   const handleCancelEdit = () => {
@@ -159,14 +120,9 @@ function TaskComments({ taskId }) {
     try {
       setUpdatingComment(true);
 
-      const response =
-        await updateComment(
-          commentId,
-          {
-            content:
-              editingContent.trim(),
-          }
-        );
+      const response = await updateComment(commentId, {
+        content: editingContent.trim(),
+      });
 
       setComments((current) =>
         current.map((comment) =>
@@ -184,51 +140,16 @@ function TaskComments({ taskId }) {
 
       toast.success("Comment updated");
     } catch (error) {
-      console.error(
-        "Failed to update comment:",
-        error.response?.data ||
-          error.message
-      );
+      console.error("Failed to update comment:", getErrorDetails(error));
 
-      toast.error(
-        error.response?.data?.message ||
-          "Failed to update comment."
-      );
+      toast.error(getErrorMessage(error, "Failed to update comment."));
     } finally {
       setUpdatingComment(false);
     }
   };
 
   const isCommentOwner = (comment) => {
-    return (
-      String(comment?.user?._id) ===
-      String(currentUser?._id)
-    );
-  };
-
-  const formatCommentDate = (date) => {
-    if (!date) {
-      return "";
-    }
-
-    const parsedDate = new Date(date);
-
-    if (Number.isNaN(parsedDate.getTime())) {
-      return "";
-    }
-
-    return parsedDate.toLocaleString(
-      "en-IN",
-      {
-        day: "numeric",
-        month: "short",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-        hour12: false,
-      }
-    );
+    return String(comment?.user?._id) === String(currentUser?._id);
   };
 
   return (
@@ -239,9 +160,7 @@ function TaskComments({ taskId }) {
         </div>
 
         <div>
-          <h2 className="text-lg font-bold text-slate-900">
-            Comments
-          </h2>
+          <h2 className="text-lg font-bold text-slate-900">Comments</h2>
 
           <p className="mt-0.5 text-sm text-slate-500">
             Discuss this task with your team.
@@ -250,7 +169,6 @@ function TaskComments({ taskId }) {
       </div>
 
       <div className="px-6 py-6">
-
         <form
           onSubmit={handleSubmit}
           className="border-b border-slate-100 pb-6"
@@ -261,9 +179,7 @@ function TaskComments({ taskId }) {
 
           <textarea
             value={content}
-            onChange={(event) =>
-              setContent(event.target.value)
-            }
+            onChange={(event) => setContent(event.target.value)}
             rows={3}
             maxLength={1000}
             placeholder="Write your comment..."
@@ -273,32 +189,24 @@ function TaskComments({ taskId }) {
           <div className="mt-3 flex justify-end">
             <button
               type="submit"
-              disabled={
-                submitting ||
-                !content.trim()
-              }
+              disabled={submitting || !content.trim()}
               className="flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <Send size={16} />
 
-              {submitting
-                ? "Adding..."
-                : "Add comment"}
+              {submitting ? "Adding..." : "Add comment"}
             </button>
           </div>
         </form>
 
         <div className="pt-6">
           {loading ? (
-            <p className="text-sm text-slate-500">
+            <LoadingState as="p" className="text-sm text-slate-500">
               Loading comments...
-            </p>
+            </LoadingState>
           ) : comments.length === 0 ? (
             <div className="rounded-xl bg-slate-50 px-5 py-8 text-center">
-              <MessageSquare
-                size={24}
-                className="mx-auto text-slate-300"
-              />
+              <MessageSquare size={24} className="mx-auto text-slate-300" />
 
               <p className="mt-3 text-sm font-medium text-slate-500">
                 No comments yet.
@@ -318,22 +226,16 @@ function TaskComments({ taskId }) {
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex min-w-0 items-center gap-3">
                       <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-100 text-sm font-bold text-blue-600">
-                        {comment.user?.name
-                          ?.charAt(0)
-                          ?.toUpperCase() ||
-                          "U"}
+                        {comment.user?.name?.charAt(0)?.toUpperCase() || "U"}
                       </div>
 
                       <div className="min-w-0">
                         <p className="truncate text-sm font-semibold text-slate-900">
-                          {comment.user?.name ||
-                            "Unknown user"}
+                          {comment.user?.name || "Unknown user"}
                         </p>
 
                         <p className="mt-0.5 text-xs text-slate-400">
-                          {formatCommentDate(
-                            comment.createdAt
-                          )}
+                          {formatCommentDate(comment.createdAt)}
                         </p>
                       </div>
                     </div>
@@ -342,9 +244,7 @@ function TaskComments({ taskId }) {
                       <div className="flex shrink-0 items-center gap-1">
                         <button
                           type="button"
-                          onClick={() =>
-                            handleEdit(comment)
-                          }
+                          onClick={() => handleEdit(comment)}
                           className="rounded-lg p-2 text-slate-400 transition hover:bg-blue-50 hover:text-blue-600"
                           title="Edit comment"
                         >
@@ -353,11 +253,7 @@ function TaskComments({ taskId }) {
 
                         <button
                           type="button"
-                          onClick={() =>
-                            handleDelete(
-                              comment._id
-                            )
-                          }
+                          onClick={() => handleDelete(comment._id)}
                           className="rounded-lg p-2 text-slate-400 transition hover:bg-red-50 hover:text-red-600"
                           title="Delete comment"
                         >
@@ -367,15 +263,12 @@ function TaskComments({ taskId }) {
                     )}
                   </div>
 
-                  {editingCommentId ===
-                  comment._id ? (
+                  {editingCommentId === comment._id ? (
                     <div className="mt-4">
                       <textarea
                         value={editingContent}
                         onChange={(event) =>
-                          setEditingContent(
-                            event.target.value
-                          )
+                          setEditingContent(event.target.value)
                         }
                         rows={3}
                         maxLength={1000}
@@ -385,12 +278,8 @@ function TaskComments({ taskId }) {
                       <div className="mt-2 flex justify-end gap-2">
                         <button
                           type="button"
-                          onClick={
-                            handleCancelEdit
-                          }
-                          disabled={
-                            updatingComment
-                          }
+                          onClick={handleCancelEdit}
+                          disabled={updatingComment}
                           className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
                         >
                           <X size={14} />
@@ -399,22 +288,13 @@ function TaskComments({ taskId }) {
 
                         <button
                           type="button"
-                          onClick={() =>
-                            handleUpdate(
-                              comment._id
-                            )
-                          }
-                          disabled={
-                            updatingComment ||
-                            !editingContent.trim()
-                          }
+                          onClick={() => handleUpdate(comment._id)}
+                          disabled={updatingComment || !editingContent.trim()}
                           className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
                         >
                           <Check size={14} />
 
-                          {updatingComment
-                            ? "Saving..."
-                            : "Save"}
+                          {updatingComment ? "Saving..." : "Save"}
                         </button>
                       </div>
                     </div>
@@ -428,7 +308,6 @@ function TaskComments({ taskId }) {
             </div>
           )}
         </div>
-
       </div>
     </div>
   );

@@ -1,6 +1,7 @@
+import { requireDocument } from "../utils/requireDocument.js";
+import { requireWorkspaceAccess } from "../utils/workspaceAccess.js";
 import Task from "../models/task.model.js";
 import Project from "../models/project.model.js";
-import Workspace from "../models/workspace.model.js";
 import AppError from "../utils/AppError.js";
 import createActivity from "../utils/createActivity.js";
 import deleteTaskCascade from "../utils/deleteTaskCascade.js";
@@ -8,39 +9,26 @@ import deleteTaskCascade from "../utils/deleteTaskCascade.js";
 export const createTask = async (req, res) => {
     const { projectId } = req.params;
 
-    const {
-        title,
-        description,
-        assignedTo,
-        status,
-        priority,
-        dueDate,
-    } = req.body;
+    const { title, description, assignedTo, status, priority, dueDate } =
+        req.body;
 
     // Check project
-    const project = await Project.findById(projectId);
-
-    if (!project) {
-        throw new AppError("Project not found", 404);
-    }
+    const project = await requireDocument(
+        Project.findById(projectId),
+        "Project not found",
+        404
+    );
 
     // Check workspace access
-    const workspace = await Workspace.findOne({
-        _id: project.workspace,
-        "members.user": req.user.userId,
-    });
-
-    if (!workspace) {
-        throw new AppError(
-            "Project not found or access denied",
-            404
-        );
-    }
+    const workspace = await requireWorkspaceAccess(
+        project.workspace,
+        req.user.userId,
+        { message: "Project not found or access denied", statusCode: 404 }
+    );
 
     if (assignedTo) {
         const isWorkspaceMember = workspace.members.some(
-            (member) =>
-                member.user.toString() === assignedTo
+            (member) => member.user.toString() === assignedTo
         );
 
         if (!isWorkspaceMember) {
@@ -81,23 +69,16 @@ export const createTask = async (req, res) => {
 export const getProjectTasks = async (req, res) => {
     const { projectId } = req.params;
 
-    const project = await Project.findById(projectId);
+    const project = await requireDocument(
+        Project.findById(projectId),
+        "Project not found",
+        404
+    );
 
-    if (!project) {
-        throw new AppError("Project not found", 404);
-    }
-
-    const workspace = await Workspace.findOne({
-        _id: project.workspace,
-        "members.user": req.user.userId,
+    await requireWorkspaceAccess(project.workspace, req.user.userId, {
+        message: "Project not found or access denied",
+        statusCode: 404,
     });
-
-    if (!workspace) {
-        throw new AppError(
-            "Project not found or access denied",
-            404
-        );
-    }
 
     const tasks = await Task.find({
         project: projectId,
@@ -115,28 +96,20 @@ export const getProjectTasks = async (req, res) => {
 export const getTask = async (req, res) => {
     const { taskId } = req.params;
 
-    const task = await Task.findById(taskId)
-        .populate("assignedTo", "name email")
-        .populate("createdBy", "name email")
-        .populate("project", "name");
+    const task = await requireDocument(
+        Task.findById(taskId)
+            .populate("assignedTo", "name email")
+            .populate("createdBy", "name email")
+            .populate("project", "name"),
+        "Task not found",
+        404
+    );
 
-    if (!task) {
-        throw new AppError("Task not found", 404);
-    }
-
-    const workspace = await Workspace.findOne({
-        _id: (
-            await Project.findById(task.project._id)
-        ).workspace,
-        "members.user": req.user.userId,
-    });
-
-    if (!workspace) {
-        throw new AppError(
-            "Task not found or access denied",
-            404
-        );
-    }
+    await requireWorkspaceAccess(
+        (await Project.findById(task.project._id)).workspace,
+        req.user.userId,
+        { message: "Task not found or access denied", statusCode: 404 }
+    );
 
     res.status(200).json({
         success: true,
@@ -146,38 +119,26 @@ export const getTask = async (req, res) => {
 export const updateTask = async (req, res) => {
     const { taskId } = req.params;
 
-    const task = await Task.findById(taskId);
+    const task = await requireDocument(
+        Task.findById(taskId),
+        "Task not found",
+        404
+    );
 
-    if (!task) {
-        throw new AppError("Task not found", 404);
-    }
+    const project = await requireDocument(
+        Project.findById(task.project),
+        "Project not found",
+        404
+    );
 
-    const project = await Project.findById(task.project);
+    const workspace = await requireWorkspaceAccess(
+        project.workspace,
+        req.user.userId,
+        { message: "Task not found or access denied", statusCode: 404 }
+    );
 
-    if (!project) {
-        throw new AppError("Project not found", 404);
-    }
-
-    const workspace = await Workspace.findOne({
-        _id: project.workspace,
-        "members.user": req.user.userId,
-    });
-
-    if (!workspace) {
-        throw new AppError(
-            "Task not found or access denied",
-            404
-        );
-    }
-
-    const {
-        title,
-        description,
-        assignedTo,
-        status,
-        priority,
-        dueDate,
-    } = req.body;
+    const { title, description, assignedTo, status, priority, dueDate } =
+        req.body;
 
     if (title !== undefined) {
         task.title = title;
@@ -201,8 +162,7 @@ export const updateTask = async (req, res) => {
 
     if (assignedTo !== undefined) {
         const isWorkspaceMember = workspace.members.some(
-            (member) =>
-                member.user.toString() === assignedTo
+            (member) => member.user.toString() === assignedTo
         );
 
         if (!isWorkspaceMember) {
@@ -236,29 +196,27 @@ export const updateTask = async (req, res) => {
 export const deleteTask = async (req, res) => {
     const { taskId } = req.params;
 
-    const task = await Task.findById(taskId);
+    const task = await requireDocument(
+        Task.findById(taskId),
+        "Task not found",
+        404
+    );
 
-    if (!task) {
-        throw new AppError("Task not found", 404);
-    }
+    const project = await requireDocument(
+        Project.findById(task.project),
+        "Project not found",
+        404
+    );
 
-    const project = await Project.findById(task.project);
-
-    if (!project) {
-        throw new AppError("Project not found", 404);
-    }
-
-    const workspace = await Workspace.findOne({
-        _id: project.workspace,
-        owner: req.user.userId,
-    });
-
-    if (!workspace) {
-        throw new AppError(
-            "Task not found or you are not the workspace owner",
-            404
-        );
-    }
+    const workspace = await requireWorkspaceAccess(
+        project.workspace,
+        req.user.userId,
+        {
+            message: "Task not found or you are not the workspace owner",
+            statusCode: 404,
+            ownerOnly: true,
+        }
+    );
 
     await deleteTaskCascade(taskId);
 

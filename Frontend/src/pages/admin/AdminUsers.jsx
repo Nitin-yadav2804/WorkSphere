@@ -1,37 +1,31 @@
 import { useEffect, useState } from "react";
-import api from "../../services/api";
 import { Search, Power, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+
+import {
+  getAdminUsers,
+  updateAdminUserRole,
+  toggleAdminUserStatus,
+  deleteAdminUser,
+} from "../../services/adminService.js";
+import { getErrorDetails, getErrorMessage } from "../../utils/errors.js";
+import LoadingState from "../../components/ui/LoadingState.jsx";
 
 function AdminUsers() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
 
-  const currentUser = JSON.parse(
-    localStorage.getItem("user")
-  );
+  const currentUser = JSON.parse(localStorage.getItem("user"));
 
   const fetchUsers = async (searchTerm = "") => {
     try {
-      const endpoint = searchTerm
-        ? `/admin/users/search?search=${encodeURIComponent(
-            searchTerm
-          )}`
-        : "/admin/users";
-
-      const response = await api.get(endpoint);
-      setUsers(response.data.users);
+      const response = await getAdminUsers(searchTerm);
+      setUsers(response.users);
     } catch (error) {
-      console.error(
-        "Failed to fetch users:",
-        error.response?.data || error.message
-      );
+      console.error("Failed to fetch users:", getErrorDetails(error));
 
-      toast.error(
-        error.response?.data?.message ||
-          "Failed to load users"
-      );
+      toast.error(getErrorMessage(error, "Failed to load users"));
     } finally {
       setLoading(false);
     }
@@ -39,29 +33,15 @@ function AdminUsers() {
 
   const handleRoleChange = async (userId, role) => {
     try {
-      const response = await api.patch(
-        `/admin/users/${userId}/role`,
-        {
-          role,
-        }
-      );
+      const response = await updateAdminUserRole(userId, role);
 
-      toast.success(
-        response.data.message ||
-          "User role updated successfully"
-      );
+      toast.success(response.message || "User role updated successfully");
 
       fetchUsers(search);
     } catch (error) {
-      console.error(
-        "Failed to update user role:",
-        error.response?.data || error.message
-      );
+      console.error("Failed to update user role:", getErrorDetails(error));
 
-      toast.error(
-        error.response?.data?.message ||
-          "Failed to update user role"
-      );
+      toast.error(getErrorMessage(error, "Failed to update user role"));
 
       fetchUsers(search);
     }
@@ -69,26 +49,15 @@ function AdminUsers() {
 
   const handleStatusChange = async (userId) => {
     try {
-      const response = await api.patch(
-        `/admin/users/${userId}/status`
-      );
+      const response = await toggleAdminUserStatus(userId);
 
-      toast.success(
-        response.data.message ||
-          "User status updated successfully"
-      );
+      toast.success(response.message || "User status updated successfully");
 
       fetchUsers(search);
     } catch (error) {
-      console.error(
-        "Failed to update user status:",
-        error.response?.data || error.message
-      );
+      console.error("Failed to update user status:", getErrorDetails(error));
 
-      toast.error(
-        error.response?.data?.message ||
-          "Failed to update user status"
-      );
+      toast.error(getErrorMessage(error, "Failed to update user status"));
 
       fetchUsers(search);
     }
@@ -104,26 +73,15 @@ function AdminUsers() {
     }
 
     try {
-      const response = await api.delete(
-        `/admin/users/${userId}`
-      );
+      const response = await deleteAdminUser(userId);
 
-      toast.success(
-        response.data.message ||
-          "User deleted successfully"
-      );
+      toast.success(response.message || "User deleted successfully");
 
       fetchUsers(search);
     } catch (error) {
-      console.error(
-        "Failed to delete user:",
-        error.response?.data || error.message
-      );
+      console.error("Failed to delete user:", getErrorDetails(error));
 
-      toast.error(
-        error.response?.data?.message ||
-          "Failed to delete user"
-      );
+      toast.error(getErrorMessage(error, "Failed to delete user"));
     }
   };
 
@@ -133,18 +91,16 @@ function AdminUsers() {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8">
-      <h1 className="text-2xl font-bold text-slate-900">
-        User Management
-      </h1>
+      <h1 className="text-2xl font-bold text-slate-900">User Management</h1>
 
       <p className="mt-2 text-sm text-slate-500 sm:text-base">
         Manage WorkSphere users, roles and account status.
       </p>
 
       {loading ? (
-        <p className="mt-8 text-slate-500">
+        <LoadingState as="p" className="mt-8 text-slate-500">
           Loading users...
-        </p>
+        </LoadingState>
       ) : (
         <div className="mt-6 overflow-hidden rounded-xl border border-slate-200 bg-white sm:mt-8">
           {/* Search */}
@@ -170,8 +126,7 @@ function AdminUsers() {
             </div>
 
             <span className="w-fit whitespace-nowrap rounded-lg border border-blue-100 bg-blue-50 px-4 py-2 text-sm font-medium text-blue-600">
-              {users.length}{" "}
-              {users.length === 1 ? "user" : "users"}
+              {users.length} {users.length === 1 ? "user" : "users"}
             </span>
           </div>
 
@@ -225,20 +180,13 @@ function AdminUsers() {
                         <select
                           value={user.role}
                           onChange={(e) =>
-                            handleRoleChange(
-                              user._id,
-                              e.target.value
-                            )
+                            handleRoleChange(user._id, e.target.value)
                           }
                           className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10"
                         >
-                          <option value="user">
-                            User
-                          </option>
+                          <option value="user">User</option>
 
-                          <option value="admin">
-                            Admin
-                          </option>
+                          <option value="admin">Admin</option>
                         </select>
                       )}
                     </td>
@@ -251,25 +199,17 @@ function AdminUsers() {
                             : "bg-blue-50 text-blue-600"
                         }`}
                       >
-                        {user.isActive === false
-                          ? "Inactive"
-                          : "Active"}
+                        {user.isActive === false ? "Inactive" : "Active"}
                       </span>
                     </td>
 
                     <td className="px-4 py-4 sm:px-6">
                       {user.email === currentUser?.email ? (
-                        <span className="text-sm text-slate-400">
-                          —
-                        </span>
+                        <span className="text-sm text-slate-400">—</span>
                       ) : (
                         <div className="flex items-center gap-2">
                           <button
-                            onClick={() =>
-                              handleStatusChange(
-                                user._id
-                              )
-                            }
+                            onClick={() => handleStatusChange(user._id)}
                             className={`inline-flex cursor-pointer items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium transition ${
                               user.isActive === false
                                 ? "bg-blue-50 text-blue-600 hover:bg-blue-100"
@@ -285,10 +225,7 @@ function AdminUsers() {
 
                           <button
                             onClick={() =>
-                              handleDeleteUser(
-                                user._id,
-                                user.name
-                              )
+                              handleDeleteUser(user._id, user.name)
                             }
                             className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-red-50 px-3 py-1.5 text-sm font-medium text-red-600 transition hover:bg-red-100"
                           >

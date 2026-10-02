@@ -1,5 +1,7 @@
 import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
+
+import { requireDocument } from "../utils/requireDocument.js";
 import User from "../models/user.model.js";
 import AppError from "../utils/AppError.js";
 
@@ -29,27 +31,21 @@ export const registerUser = async (req, res) => {
 export const loginUser = async (req, res) => {
     const { email, password } = req.body;
 
-    const user = await User.findOne({ email });
-
-    if (!user) {
-        throw new AppError("Email not found", 404);
-    }
-
-    if (!user.isActive) {
-        throw new AppError(
-            "Your account has been deactivated",
-            403
-        );
-    }
-
-    const isPasswordCorrect = await bcrypt.compare(
-        password,
-        user.password
+    const user = await requireDocument(
+        User.findOne({ email }),
+        "Email not found",
+        404
     );
 
-    if (!isPasswordCorrect) {
-        throw new AppError("Incorrect password", 401);
+    if (!user.isActive) {
+        throw new AppError("Your account has been deactivated", 403);
     }
+
+    const isPasswordCorrect = await requireDocument(
+        bcrypt.compare(password, user.password),
+        "Incorrect password",
+        401
+    );
 
     const token = jwt.sign(
         {
@@ -76,13 +72,11 @@ export const loginUser = async (req, res) => {
 };
 
 export const getProfile = async (req, res) => {
-    const user = await User.findById(
-        req.user.userId
-    ).select("-password");
-
-    if (!user) {
-        throw new AppError("User not found", 404);
-    }
+    const user = await requireDocument(
+        User.findById(req.user.userId).select("-password"),
+        "User not found",
+        404
+    );
 
     res.status(200).json({
         success: true,

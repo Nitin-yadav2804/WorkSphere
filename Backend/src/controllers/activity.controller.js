@@ -1,19 +1,13 @@
+import { requireWorkspaceAccess } from "../utils/workspaceAccess.js";
 import Activity from "../models/activity.model.js";
-import Workspace from "../models/workspace.model.js";
-import AppError from "../utils/AppError.js";
 
 export const getWorkspaceActivities = async (req, res) => {
     const { workspaceId } = req.params;
 
-
-    const workspace = await Workspace.findOne({
-        _id: workspaceId,
-        "members.user": req.user.userId,
+    await requireWorkspaceAccess(workspaceId, req.user.userId, {
+        message: "Workspace not found or access denied",
+        statusCode: 404,
     });
-
-    if (!workspace) {
-        throw new AppError("Workspace not found or access denied", 404);
-    }
 
     const page = Math.max(Number(req.query.page) || 1, 1);
     const limit = Math.min(Number(req.query.limit) || 20, 50);

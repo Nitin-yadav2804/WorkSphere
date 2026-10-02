@@ -1,6 +1,6 @@
+import { requireDocument } from "../utils/requireDocument.js";
+import { requireWorkspaceAccess } from "../utils/workspaceAccess.js";
 import Project from "../models/project.model.js";
-import Workspace from "../models/workspace.model.js";
-import AppError from "../utils/AppError.js";
 import createActivity from "../utils/createActivity.js";
 import deleteProjectCascade from "../utils/deleteProjectCascade.js";
 
@@ -8,17 +8,11 @@ export const createProject = async (req, res) => {
     const { workspaceId } = req.params;
     const { name, description, startDate, dueDate } = req.body;
 
-    const workspace = await Workspace.findOne({
-        _id: workspaceId,
-        "members.user": req.user.userId,
-    });
-
-    if (!workspace) {
-        throw new AppError(
-            "Workspace not found or access denied",
-            404
-        );
-    }
+    const workspace = await requireWorkspaceAccess(
+        workspaceId,
+        req.user.userId,
+        { message: "Workspace not found or access denied", statusCode: 404 }
+    );
 
     const project = await Project.create({
         name,
@@ -46,17 +40,10 @@ export const createProject = async (req, res) => {
 export const getWorkspaceProjects = async (req, res) => {
     const { workspaceId } = req.params;
 
-    const workspace = await Workspace.findOne({
-        _id: workspaceId,
-        "members.user": req.user.userId,
+    await requireWorkspaceAccess(workspaceId, req.user.userId, {
+        message: "Workspace not found or access denied",
+        statusCode: 404,
     });
-
-    if (!workspace) {
-        throw new AppError(
-            "Workspace not found or access denied",
-            404
-        );
-    }
 
     const projects = await Project.find({
         workspace: workspaceId,
@@ -73,25 +60,18 @@ export const getWorkspaceProjects = async (req, res) => {
 export const getProject = async (req, res) => {
     const { projectId } = req.params;
 
-    const project = await Project.findById(projectId)
-        .populate("createdBy", "name email")
-        .populate("workspace", "name");
+    const project = await requireDocument(
+        Project.findById(projectId)
+            .populate("createdBy", "name email")
+            .populate("workspace", "name"),
+        "Project not found",
+        404
+    );
 
-    if (!project) {
-        throw new AppError("Project not found", 404);
-    }
-
-    const workspace = await Workspace.findOne({
-        _id: project.workspace._id,
-        "members.user": req.user.userId,
+    await requireWorkspaceAccess(project.workspace._id, req.user.userId, {
+        message: "Project not found or access denied",
+        statusCode: 404,
     });
-
-    if (!workspace) {
-        throw new AppError(
-            "Project not found or access denied",
-            404
-        );
-    }
 
     res.status(200).json({
         success: true,
@@ -101,32 +81,20 @@ export const getProject = async (req, res) => {
 export const updateProject = async (req, res) => {
     const { projectId } = req.params;
 
-    const project = await Project.findById(projectId);
-
-    if (!project) {
-        throw new AppError("Project not found", 404);
-    }
+    const project = await requireDocument(
+        Project.findById(projectId),
+        "Project not found",
+        404
+    );
 
     // Check whether the logged-in user belongs to the workspace
-    const workspace = await Workspace.findOne({
-        _id: project.workspace,
-        "members.user": req.user.userId,
-    });
+    const workspace = await requireWorkspaceAccess(
+        project.workspace,
+        req.user.userId,
+        { message: "Project not found or access denied", statusCode: 404 }
+    );
 
-    if (!workspace) {
-        throw new AppError(
-            "Project not found or access denied",
-            404
-        );
-    }
-
-    const {
-        name,
-        description,
-        status,
-        startDate,
-        dueDate,
-    } = req.body;
+    const { name, description, status, startDate, dueDate } = req.body;
 
     if (name !== undefined) {
         project.name = name;
@@ -168,23 +136,21 @@ export const updateProject = async (req, res) => {
 export const deleteProject = async (req, res) => {
     const { projectId } = req.params;
 
-    const project = await Project.findById(projectId);
+    const project = await requireDocument(
+        Project.findById(projectId),
+        "Project not found",
+        404
+    );
 
-    if (!project) {
-        throw new AppError("Project not found", 404);
-    }
-
-    const workspace = await Workspace.findOne({
-        _id: project.workspace,
-        owner: req.user.userId,
-    });
-
-    if (!workspace) {
-        throw new AppError(
-            "Project not found or you are not the workspace owner",
-            404
-        );
-    }
+    const workspace = await requireWorkspaceAccess(
+        project.workspace,
+        req.user.userId,
+        {
+            message: "Project not found or you are not the workspace owner",
+            statusCode: 404,
+            ownerOnly: true,
+        }
+    );
 
     const projectName = project.name;
 

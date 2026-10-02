@@ -1,7 +1,11 @@
 import { useEffect, useState } from "react";
 import { ArrowLeft, Users, User } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
-import api from "../../services/api";
+
+import { formatLocaleDate } from "../../utils/dates.js";
+import { getAdminWorkspace } from "../../services/adminService.js";
+import PageLoading from "../../components/ui/PageLoading.jsx";
+import { getErrorDetails } from "../../utils/errors.js";
 
 function AdminWorkspaceDetails() {
   const { workspaceId } = useParams();
@@ -12,16 +16,11 @@ function AdminWorkspaceDetails() {
 
   const fetchWorkspace = async () => {
     try {
-      const response = await api.get(
-        `/admin/workspaces/${workspaceId}`
-      );
+      const response = await getAdminWorkspace(workspaceId);
 
-      setWorkspace(response.data.workspace);
+      setWorkspace(response.workspace);
     } catch (error) {
-      console.error(
-        "Failed to fetch workspace:",
-        error.response?.data || error.message
-      );
+      console.error("Failed to fetch workspace:", getErrorDetails(error));
     } finally {
       setLoading(false);
     }
@@ -32,22 +31,14 @@ function AdminWorkspaceDetails() {
   }, [workspaceId]);
 
   if (loading) {
-    return (
-      <div className="p-4 sm:p-6 lg:p-8">
-        <p className="text-slate-500">
-          Loading workspace...
-        </p>
-      </div>
-    );
+    return <PageLoading variant="admin">Loading workspace...</PageLoading>;
   }
 
   if (!workspace) {
     return (
       <div className="p-4 sm:p-6 lg:p-8">
         <button
-          onClick={() =>
-            navigate("/admin/workspaces")
-          }
+          onClick={() => navigate("/admin/workspaces")}
           className="mb-6 inline-flex cursor-pointer items-center gap-2 text-sm font-medium text-blue-600 hover:text-blue-700"
         >
           <ArrowLeft size={16} />
@@ -70,9 +61,7 @@ function AdminWorkspaceDetails() {
   return (
     <div className="p-4 sm:p-6 lg:p-8">
       <button
-        onClick={() =>
-          navigate("/admin/workspaces")
-        }
+        onClick={() => navigate("/admin/workspaces")}
         className="mb-6 inline-flex cursor-pointer items-center gap-2 text-sm font-medium text-blue-600 transition hover:text-blue-700"
       >
         <ArrowLeft size={16} />
@@ -80,13 +69,10 @@ function AdminWorkspaceDetails() {
       </button>
 
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">
-          {workspace.name}
-        </h1>
+        <h1 className="text-2xl font-bold text-slate-900">{workspace.name}</h1>
 
         <p className="mt-2 text-sm text-slate-500 sm:text-base">
-          {workspace.description ||
-            "No description provided."}
+          {workspace.description || "No description provided."}
         </p>
       </div>
 
@@ -99,9 +85,7 @@ function AdminWorkspaceDetails() {
             </div>
 
             <div>
-              <p className="text-sm text-slate-500">
-                Total Members
-              </p>
+              <p className="text-sm text-slate-500">Total Members</p>
 
               <p className="mt-1 text-xl font-bold text-slate-900">
                 {workspace.members?.length || 0}
@@ -117,9 +101,7 @@ function AdminWorkspaceDetails() {
             </div>
 
             <div className="min-w-0">
-              <p className="text-sm text-slate-500">
-                Owner
-              </p>
+              <p className="text-sm text-slate-500">Owner</p>
 
               <p className="mt-1 truncate text-sm font-semibold text-slate-900">
                 {workspace.owner?.name || "Unknown"}
@@ -129,14 +111,10 @@ function AdminWorkspaceDetails() {
         </div>
 
         <div className="rounded-xl border border-slate-200 bg-white p-5">
-          <p className="text-sm text-slate-500">
-            Created
-          </p>
+          <p className="text-sm text-slate-500">Created</p>
 
           <p className="mt-2 text-sm font-semibold text-slate-900">
-            {new Date(
-              workspace.createdAt
-            ).toLocaleDateString()}
+            {formatLocaleDate(workspace.createdAt)}
           </p>
         </div>
       </div>
@@ -204,9 +182,7 @@ function AdminWorkspaceDetails() {
 
                     <td className="px-4 py-4 text-sm text-slate-600 sm:px-6">
                       {member.joinedAt
-                        ? new Date(
-                            member.joinedAt
-                          ).toLocaleDateString()
+                        ? formatLocaleDate(member.joinedAt)
                         : "—"}
                     </td>
                   </tr>

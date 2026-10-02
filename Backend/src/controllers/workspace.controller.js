@@ -1,3 +1,5 @@
+import { requireDocument } from "../utils/requireDocument.js";
+import { requireWorkspaceAccess } from "../utils/workspaceAccess.js";
 import User from "../models/user.model.js";
 import Workspace from "../models/workspace.model.js";
 import AppError from "../utils/AppError.js";
@@ -47,19 +49,18 @@ export const getMyWorkspaces = async (req, res) => {
 export const getWorkspace = async (req, res) => {
     const { workspaceId } = req.params;
 
-    const workspace = await Workspace.findOne({
-        _id: workspaceId,
-        "members.user": req.user.userId,
-    })
-        .populate("owner", "name email")
-        .populate("members.user", "name email");
-
-    if (!workspace) {
-        throw new AppError(
-            "Workspace not found or access denied",
-            404
-        );
-    }
+    const workspace = await requireWorkspaceAccess(
+        workspaceId,
+        req.user.userId,
+        {
+            message: "Workspace not found or access denied",
+            statusCode: 404,
+            populate: [
+                ["owner", "name email"],
+                ["members.user", "name email"],
+            ],
+        }
+    );
 
     res.status(200).json({
         success: true,
@@ -71,17 +72,15 @@ export const updateWorkspace = async (req, res) => {
     const { workspaceId } = req.params;
     const { name, description } = req.body;
 
-    const workspace = await Workspace.findOne({
-        _id: workspaceId,
-        owner: req.user.userId,
-    });
-
-    if (!workspace) {
-        throw new AppError(
-            "Workspace not found or you are not the owner",
-            404
-        );
-    }
+    const workspace = await requireWorkspaceAccess(
+        workspaceId,
+        req.user.userId,
+        {
+            message: "Workspace not found or you are not the owner",
+            statusCode: 404,
+            ownerOnly: true,
+        }
+    );
 
     if (name !== undefined) {
         workspace.name = name;
@@ -110,17 +109,15 @@ export const updateWorkspace = async (req, res) => {
 export const deleteWorkspace = async (req, res) => {
     const { workspaceId } = req.params;
 
-    const workspace = await Workspace.findOne({
-        _id: workspaceId,
-        owner: req.user.userId,
-    });
-
-    if (!workspace) {
-        throw new AppError(
-            "Workspace not found or you are not the owner",
-            404
-        );
-    }
+    const workspace = await requireWorkspaceAccess(
+        workspaceId,
+        req.user.userId,
+        {
+            message: "Workspace not found or you are not the owner",
+            statusCode: 404,
+            ownerOnly: true,
+        }
+    );
 
     const workspaceName = workspace.name;
 
@@ -142,49 +139,31 @@ export const addMember = async (req, res) => {
     const { workspaceId } = req.params;
     const { email, role } = req.body;
 
-    const workspace = await Workspace.findById(
-        workspaceId
+    const workspace = await requireDocument(
+        Workspace.findById(workspaceId),
+        "Workspace not found",
+        404
     );
 
-    if (!workspace) {
-        throw new AppError(
-            "Workspace not found",
-            404
-        );
-    }
-
     // Only workspace owner can add members
-    if (
-        String(workspace.owner) !==
-        String(req.user.userId)
-    ) {
-        throw new AppError(
-            "Only workspace owner can add members",
-            403
-        );
+    if (String(workspace.owner) !== String(req.user.userId)) {
+        throw new AppError("Only workspace owner can add members", 403);
     }
 
-    const user = await User.findOne({
-        email,
-    });
-
-    if (!user) {
-        throw new AppError(
-            "User not found. The user must have a WorkSphere account.",
-            404
-        );
-    }
+    const user = await requireDocument(
+        User.findOne({
+            email,
+        }),
+        "User not found. The user must have a WorkSphere account.",
+        404
+    );
 
     const alreadyMember = workspace.members.some(
-        (member) =>
-            String(member.user) === String(user._id)
+        (member) => String(member.user) === String(user._id)
     );
 
     if (alreadyMember) {
-        throw new AppError(
-            "User is already a member of this workspace",
-            400
-        );
+        throw new AppError("User is already a member of this workspace", 400);
     }
 
     const newMember = {
@@ -196,10 +175,7 @@ export const addMember = async (req, res) => {
 
     await workspace.save();
 
-    const addedMember =
-        workspace.members[
-            workspace.members.length - 1
-        ];
+    const addedMember = workspace.members[workspace.members.length - 1];
 
     res.status(201).json({
         success: true,
@@ -219,20 +195,15 @@ export const addMember = async (req, res) => {
 export const getWorkspaceMembers = async (req, res) => {
     const { workspaceId } = req.params;
 
-    const workspace = await Workspace.findOne({
-        _id: workspaceId,
-        "members.user": req.user.userId,
-    }).populate(
-        "members.user",
-        "name email role"
+    const workspace = await requireWorkspaceAccess(
+        workspaceId,
+        req.user.userId,
+        {
+            message: "Workspace not found or access denied",
+            statusCode: 404,
+            populate: [["members.user", "name email role"]],
+        }
     );
-
-    if (!workspace) {
-        throw new AppError(
-            "Workspace not found or access denied",
-            404
-        );
-    }
 
     res.status(200).json({
         success: true,
@@ -243,40 +214,30 @@ export const getWorkspaceMembers = async (req, res) => {
 export const removeMember = async (req, res) => {
     const { workspaceId, userId } = req.params;
 
-    const workspace = await Workspace.findOne({
-        _id: workspaceId,
-        owner: req.user.userId,
-    });
-
-    if (!workspace) {
-        throw new AppError(
-            "Workspace not found or you are not the owner",
-            404
-        );
-    }
+    const workspace = await requireWorkspaceAccess(
+        workspaceId,
+        req.user.userId,
+        {
+            message: "Workspace not found or you are not the owner",
+            statusCode: 404,
+            ownerOnly: true,
+        }
+    );
 
     if (workspace.owner.toString() === userId) {
-        throw new AppError(
-            "Workspace owner cannot be removed",
-            400
-        );
+        throw new AppError("Workspace owner cannot be removed", 400);
     }
 
     const memberExists = workspace.members.some(
-        (member) =>
-            member.user.toString() === userId
+        (member) => member.user.toString() === userId
     );
 
     if (!memberExists) {
-        throw new AppError(
-            "User is not a member of this workspace",
-            404
-        );
+        throw new AppError("User is not a member of this workspace", 404);
     }
 
     workspace.members = workspace.members.filter(
-        (member) =>
-            member.user.toString() !== userId
+        (member) => member.user.toString() !== userId
     );
 
     await workspace.save();
@@ -298,28 +259,22 @@ export const updateMemberRole = async (req, res) => {
     const { workspaceId, userId } = req.params;
     const { role } = req.body;
 
-    const workspace = await Workspace.findOne({
-        _id: workspaceId,
-        owner: req.user.userId,
-    });
-
-    if (!workspace) {
-        throw new AppError(
-            "Workspace not found or you are not the owner",
-            404
-        );
-    }
+    const workspace = await requireWorkspaceAccess(
+        workspaceId,
+        req.user.userId,
+        {
+            message: "Workspace not found or you are not the owner",
+            statusCode: 404,
+            ownerOnly: true,
+        }
+    );
 
     const member = workspace.members.find(
-        (member) =>
-            member.user.toString() === userId
+        (member) => member.user.toString() === userId
     );
 
     if (!member) {
-        throw new AppError(
-            "User is not a member of this workspace",
-            404
-        );
+        throw new AppError("User is not a member of this workspace", 404);
     }
 
     member.role = role;

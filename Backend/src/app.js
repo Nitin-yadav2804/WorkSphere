@@ -1,4 +1,6 @@
+import "dotenv/config";
 import express from "express";
+import cors from "cors";
 import authRoutes from "./routes/auth.routes.js";
 import errorMiddleware from "./middleware/error.middleware.js";
 import workspaceRoutes from "./routes/workspace.routes.js";
@@ -6,13 +8,12 @@ import projectRoutes from "./routes/project.routes.js";
 import taskRoutes from "./routes/task.routes.js";
 import commentRoutes from "./routes/comment.routes.js";
 import activityRoutes from "./routes/activity.routes.js";
-import cors from "cors";
 import adminRoutes from "./routes/admin.routes.js";
 import fileRoutes from "./routes/file.routes.js";
 import connectDB from "./config/db.js";
 
+const PORT = process.env.PORT || 3000;
 const app = express();
-connectDB();
 
 app.use(express.json());
 
@@ -38,12 +39,16 @@ app.use("/api", activityRoutes);
 app.use("/api/files", fileRoutes);
 
 app.get("/", (req, res) => {
-    res.status(200).json({
-        success: true,
-        message: "WorkSphere API is running",
-    });
+  res.status(200).json({
+    success: true,
+    message: "WorkSphere API is running",
+  });
 });
 
 app.use(errorMiddleware);
 
-export default app;
+await connectDB();
+
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});

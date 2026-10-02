@@ -1,8 +1,15 @@
 import { useEffect, useState } from "react";
 import { Search, Eye, Trash2 } from "lucide-react";
-import api from "../../services/api";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+
+import { formatLocaleDate } from "../../utils/dates.js";
+import {
+  getAdminProjects,
+  deleteAdminProject,
+} from "../../services/adminService.js";
+import { getErrorDetails, getErrorMessage } from "../../utils/errors.js";
+import LoadingState from "../../components/ui/LoadingState.jsx";
 
 function AdminProjects() {
   const [projects, setProjects] = useState([]);
@@ -13,19 +20,13 @@ function AdminProjects() {
 
   const fetchProjects = async () => {
     try {
-      const response = await api.get("/admin/projects");
+      const response = await getAdminProjects();
 
-      setProjects(response.data.projects);
+      setProjects(response.projects);
     } catch (error) {
-      console.error(
-        "Failed to fetch projects:",
-        error.response?.data || error.message
-      );
+      console.error("Failed to fetch projects:", getErrorDetails(error));
 
-      toast.error(
-        error.response?.data?.message ||
-          "Failed to load projects"
-      );
+      toast.error(getErrorMessage(error, "Failed to load projects"));
     } finally {
       setLoading(false);
     }
@@ -41,26 +42,15 @@ function AdminProjects() {
     }
 
     try {
-      const response = await api.delete(
-        `/admin/projects/${projectId}`
-      );
+      const response = await deleteAdminProject(projectId);
 
-      toast.success(
-        response.data.message ||
-          "Project deleted successfully"
-      );
+      toast.success(response.message || "Project deleted successfully");
 
       fetchProjects();
     } catch (error) {
-      console.error(
-        "Failed to delete project:",
-        error.response?.data || error.message
-      );
+      console.error("Failed to delete project:", getErrorDetails(error));
 
-      toast.error(
-        error.response?.data?.message ||
-          "Failed to delete project"
-      );
+      toast.error(getErrorMessage(error, "Failed to delete project"));
     }
   };
 
@@ -68,26 +58,16 @@ function AdminProjects() {
     fetchProjects();
   }, []);
 
-  const filteredProjects = projects.filter(
-    (project) => {
-      const searchTerm = search.toLowerCase();
+  const filteredProjects = projects.filter((project) => {
+    const searchTerm = search.toLowerCase();
 
-      return (
-        project.name
-          ?.toLowerCase()
-          .includes(searchTerm) ||
-        project.workspace?.name
-          ?.toLowerCase()
-          .includes(searchTerm) ||
-        project.createdBy?.name
-          ?.toLowerCase()
-          .includes(searchTerm) ||
-        project.createdBy?.email
-          ?.toLowerCase()
-          .includes(searchTerm)
-      );
-    }
-  );
+    return (
+      project.name?.toLowerCase().includes(searchTerm) ||
+      project.workspace?.name?.toLowerCase().includes(searchTerm) ||
+      project.createdBy?.name?.toLowerCase().includes(searchTerm) ||
+      project.createdBy?.email?.toLowerCase().includes(searchTerm)
+    );
+  });
 
   return (
     <div className="p-4 sm:p-6 lg:p-8">
@@ -99,8 +79,7 @@ function AdminProjects() {
           </h1>
 
           <p className="mt-1 text-sm text-slate-500">
-            Monitor projects and their task counts across
-            WorkSphere.
+            Monitor projects and their task counts across WorkSphere.
           </p>
         </div>
 
@@ -121,9 +100,7 @@ function AdminProjects() {
             type="text"
             placeholder="Search projects, workspaces, or users..."
             value={search}
-            onChange={(e) =>
-              setSearch(e.target.value)
-            }
+            onChange={(e) => setSearch(e.target.value)}
             className="w-full rounded-lg border border-slate-200 bg-white py-2.5 pl-10 pr-4 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
           />
         </div>
@@ -132,9 +109,12 @@ function AdminProjects() {
       {/* Projects Table */}
       <div className="mt-6 overflow-hidden rounded-xl border border-slate-200 bg-white">
         {loading ? (
-          <div className="px-6 py-10 text-center text-sm text-slate-500">
+          <LoadingState
+            as="div"
+            className="px-6 py-10 text-center text-sm text-slate-500"
+          >
             Loading projects...
-          </div>
+          </LoadingState>
         ) : filteredProjects.length === 0 ? (
           <div className="px-6 py-10 text-center text-sm text-slate-500">
             No projects found.
@@ -186,8 +166,7 @@ function AdminProjects() {
                       </p>
 
                       <p className="mt-1 max-w-xs truncate text-sm text-slate-500">
-                        {project.description ||
-                          "No description"}
+                        {project.description || "No description"}
                       </p>
                     </td>
 
@@ -197,8 +176,7 @@ function AdminProjects() {
 
                     <td className="px-4 py-4 sm:px-6">
                       <p className="text-sm font-medium text-slate-700">
-                        {project.createdBy?.name ||
-                          "Unknown"}
+                        {project.createdBy?.name || "Unknown"}
                       </p>
 
                       <p className="text-xs text-slate-500">
@@ -218,9 +196,7 @@ function AdminProjects() {
 
                     <td className="px-4 py-4 text-sm text-slate-500 sm:px-6">
                       {project.createdAt
-                        ? new Date(
-                            project.createdAt
-                          ).toLocaleDateString()
+                        ? formatLocaleDate(project.createdAt)
                         : "—"}
                     </td>
 
@@ -228,9 +204,7 @@ function AdminProjects() {
                       <div className="flex items-center gap-2">
                         <button
                           onClick={() =>
-                            navigate(
-                              `/admin/projects/${project._id}`
-                            )
+                            navigate(`/admin/projects/${project._id}`)
                           }
                           className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-blue-50 px-3 py-1.5 text-sm font-medium text-blue-600 transition hover:bg-blue-100"
                         >
@@ -239,11 +213,7 @@ function AdminProjects() {
                         </button>
 
                         <button
-                          onClick={() =>
-                            handleDeleteProject(
-                              project._id
-                            )
-                          }
+                          onClick={() => handleDeleteProject(project._id)}
                           className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-red-50 px-3 py-1.5 text-sm font-medium text-red-600 transition hover:bg-red-100"
                         >
                           <Trash2 size={15} />

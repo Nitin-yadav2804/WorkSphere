@@ -10,7 +10,11 @@ import {
   Zap,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import api from "../../services/api";
+
+import { formatLocaleDate } from "../../utils/dates.js";
+import { getAdminDashboard } from "../../services/adminService.js";
+import PageLoading from "../../components/ui/PageLoading.jsx";
+import { getErrorDetails } from "../../utils/errors.js";
 
 function AdminDashboard() {
   const navigate = useNavigate();
@@ -39,17 +43,14 @@ function AdminDashboard() {
 
   const fetchDashboard = async () => {
     try {
-      const response = await api.get("/admin/dashboard");
+      const response = await getAdminDashboard();
 
-      setStats(response.data.stats);
-      setTaskStats(response.data.taskStats);
-      setProjectStats(response.data.projectStats);
-      setRecentActivity(response.data.recentActivity);
+      setStats(response.stats);
+      setTaskStats(response.taskStats);
+      setProjectStats(response.projectStats);
+      setRecentActivity(response.recentActivity);
     } catch (error) {
-      console.error(
-        "Failed to fetch admin dashboard:",
-        error.response?.data || error.message
-      );
+      console.error("Failed to fetch admin dashboard:", getErrorDetails(error));
     } finally {
       setLoading(false);
     }
@@ -61,11 +62,7 @@ function AdminDashboard() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="text-sm text-slate-500">
-          Loading dashboard...
-        </div>
-      </div>
+      <PageLoading variant="adminDashboard">Loading dashboard...</PageLoading>
     );
   }
 
@@ -138,16 +135,14 @@ function AdminDashboard() {
           </h1>
 
           <p className="mt-2 max-w-2xl text-sm leading-6 text-blue-100">
-            Monitor users, workspaces, projects, tasks, and
-            platform activity from one place.
+            Monitor users, workspaces, projects, tasks, and platform activity
+            from one place.
           </p>
 
           <div className="mt-5 flex items-center gap-2 text-sm sm:mt-6">
             <span className="flex h-2.5 w-2.5 rounded-full bg-emerald-400" />
 
-            <span className="text-blue-100">
-              System operational
-            </span>
+            <span className="text-blue-100">System operational</span>
           </div>
         </div>
 
@@ -196,10 +191,7 @@ function AdminDashboard() {
           <div className="flex flex-col gap-3 border-b border-slate-200 px-4 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
             <div>
               <div className="flex items-center gap-2">
-                <Activity
-                  size={18}
-                  className="text-blue-600"
-                />
+                <Activity size={18} className="text-blue-600" />
 
                 <h2 className="font-semibold text-slate-900">
                   Recent Activity
@@ -243,16 +235,13 @@ function AdminDashboard() {
                         </p>
 
                         <p className="mt-1 text-sm text-slate-500">
-                          {activity.description ||
-                            "No description"}
+                          {activity.description || "No description"}
                         </p>
                       </div>
 
                       <span className="shrink-0 text-xs text-slate-400">
                         {activity.createdAt
-                          ? new Date(
-                              activity.createdAt
-                            ).toLocaleDateString()
+                          ? formatLocaleDate(activity.createdAt)
                           : "—"}
                       </span>
                     </div>
@@ -294,9 +283,7 @@ function AdminDashboard() {
           <div className="flex items-center gap-2">
             <Zap size={18} className="text-blue-600" />
 
-            <h2 className="font-semibold text-slate-900">
-              Platform Snapshot
-            </h2>
+            <h2 className="font-semibold text-slate-900">Platform Snapshot</h2>
           </div>
 
           <p className="mt-1 text-sm text-slate-500">
@@ -318,9 +305,7 @@ function AdminDashboard() {
 
             <div className="mt-3 grid grid-cols-3 gap-2">
               <div className="rounded-lg bg-slate-50 p-3">
-                <p className="text-xs text-slate-500">
-                  To Do
-                </p>
+                <p className="text-xs text-slate-500">To Do</p>
 
                 <p className="mt-1 text-lg font-semibold text-slate-900">
                   {taskStats.todo}
@@ -328,9 +313,7 @@ function AdminDashboard() {
               </div>
 
               <div className="rounded-lg bg-blue-50 p-3">
-                <p className="text-xs text-blue-600">
-                  In Progress
-                </p>
+                <p className="text-xs text-blue-600">In Progress</p>
 
                 <p className="mt-1 text-lg font-semibold text-blue-700">
                   {taskStats.inProgress}
@@ -338,9 +321,7 @@ function AdminDashboard() {
               </div>
 
               <div className="rounded-lg bg-emerald-50 p-3">
-                <p className="text-xs text-emerald-600">
-                  Completed
-                </p>
+                <p className="text-xs text-emerald-600">Completed</p>
 
                 <p className="mt-1 text-lg font-semibold text-emerald-700">
                   {taskStats.completed}
@@ -364,9 +345,7 @@ function AdminDashboard() {
 
             <div className="mt-3 space-y-2">
               <div className="flex items-center justify-between rounded-lg bg-blue-50 px-3 py-2.5">
-                <span className="text-sm text-blue-700">
-                  Active
-                </span>
+                <span className="text-sm text-blue-700">Active</span>
 
                 <span className="font-semibold text-blue-700">
                   {projectStats.active}
@@ -374,9 +353,7 @@ function AdminDashboard() {
               </div>
 
               <div className="flex items-center justify-between rounded-lg bg-emerald-50 px-3 py-2.5">
-                <span className="text-sm text-emerald-700">
-                  Completed
-                </span>
+                <span className="text-sm text-emerald-700">Completed</span>
 
                 <span className="font-semibold text-emerald-700">
                   {projectStats.completed}
@@ -384,9 +361,7 @@ function AdminDashboard() {
               </div>
 
               <div className="flex items-center justify-between rounded-lg bg-slate-100 px-3 py-2.5">
-                <span className="text-sm text-slate-600">
-                  Archived
-                </span>
+                <span className="text-sm text-slate-600">Archived</span>
 
                 <span className="font-semibold text-slate-700">
                   {projectStats.archived}
@@ -415,9 +390,7 @@ function AdminDashboard() {
       {/* Quick Actions */}
       <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
         <div>
-          <h2 className="font-semibold text-slate-900">
-            Quick Management
-          </h2>
+          <h2 className="font-semibold text-slate-900">Quick Management</h2>
 
           <p className="mt-1 text-sm text-slate-500">
             Jump directly to frequently used admin sections.
@@ -439,9 +412,7 @@ function AdminDashboard() {
                 </div>
 
                 <div className="min-w-0">
-                  <p className="font-medium text-slate-900">
-                    {action.title}
-                  </p>
+                  <p className="font-medium text-slate-900">{action.title}</p>
 
                   <p className="mt-1 text-xs text-slate-500">
                     {action.description}

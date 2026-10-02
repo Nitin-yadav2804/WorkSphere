@@ -11,6 +11,10 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
+import { formatRelativeTime } from "../utils/dates.js";
+import PageLoading from "../components/ui/PageLoading.jsx";
+import { getErrorDetails, getErrorMessage } from "../utils/errors.js";
+import LoadingState from "../components/ui/LoadingState.jsx";
 import { getWorkspaces } from "../services/workspaceService";
 import { getWorkspaceActivities } from "../services/activityService";
 
@@ -34,9 +38,7 @@ function Activity() {
     totalPages: 0,
   });
 
-
   // Fetch workspaces
-
 
   useEffect(() => {
     const fetchWorkspaces = async () => {
@@ -53,15 +55,9 @@ function Activity() {
           setSelectedWorkspace(workspaceList[0]._id);
         }
       } catch (error) {
-        console.error(
-          "Failed to fetch workspaces:",
-          error.response?.data || error.message
-        );
+        console.error("Failed to fetch workspaces:", getErrorDetails(error));
 
-        toast.error(
-          error.response?.data?.message ||
-            "Failed to load workspaces."
-        );
+        toast.error(getErrorMessage(error, "Failed to load workspaces."));
       } finally {
         setLoadingWorkspaces(false);
       }
@@ -70,9 +66,7 @@ function Activity() {
     fetchWorkspaces();
   }, []);
 
-
   // Fetch activities
-
 
   useEffect(() => {
     if (!selectedWorkspace) {
@@ -85,16 +79,11 @@ function Activity() {
         setLoadingActivities(true);
         setError("");
 
-        const response = await getWorkspaceActivities(
-          selectedWorkspace,
-          {
-            page,
-            limit: 20,
-            ...(actionFilter
-              ? { action: actionFilter }
-              : {}),
-          }
-        );
+        const response = await getWorkspaceActivities(selectedWorkspace, {
+          page,
+          limit: 20,
+          ...(actionFilter ? { action: actionFilter } : {}),
+        });
 
         setActivities(response.activities || []);
 
@@ -107,15 +96,9 @@ function Activity() {
           }
         );
       } catch (error) {
-        console.error(
-          "Failed to fetch activities:",
-          error.response?.data || error.message
-        );
+        console.error("Failed to fetch activities:", getErrorDetails(error));
 
-        setError(
-          error.response?.data?.message ||
-            "Failed to load activities."
-        );
+        setError(getErrorMessage(error, "Failed to load activities."));
 
         setActivities([]);
       } finally {
@@ -126,87 +109,23 @@ function Activity() {
     fetchActivities();
   }, [selectedWorkspace, page, actionFilter]);
 
-
   // Change workspace
-
 
   const handleWorkspaceChange = (event) => {
     setSelectedWorkspace(event.target.value);
     setPage(1);
   };
 
-
   // Change action filter
-
 
   const handleActionChange = (event) => {
     setActionFilter(event.target.value);
     setPage(1);
   };
 
-
   // Format date
 
-
-  const formatRelativeTime = (date) => {
-    if (!date) {
-      return "";
-    }
-
-    const now = new Date();
-    const activityDate = new Date(date);
-
-    const diffInSeconds = Math.floor(
-      (now - activityDate) / 1000
-    );
-
-    if (diffInSeconds < 60) {
-      return "Just now";
-    }
-
-    const diffInMinutes = Math.floor(
-      diffInSeconds / 60
-    );
-
-    if (diffInMinutes < 60) {
-      return `${diffInMinutes} ${
-        diffInMinutes === 1 ? "minute" : "minutes"
-      } ago`;
-    }
-
-    const diffInHours = Math.floor(
-      diffInMinutes / 60
-    );
-
-    if (diffInHours < 24) {
-      return `${diffInHours} ${
-        diffInHours === 1 ? "hour" : "hours"
-      } ago`;
-    }
-
-    const diffInDays = Math.floor(
-      diffInHours / 24
-    );
-
-    if (diffInDays < 7) {
-      return `${diffInDays} ${
-        diffInDays === 1 ? "day" : "days"
-      } ago`;
-    }
-
-    return activityDate.toLocaleDateString(
-      undefined,
-      {
-        day: "numeric",
-        month: "short",
-        year: "numeric",
-      }
-    );
-  };
-
-
   // Activity icon
-
 
   const getActivityIcon = (action) => {
     if (!action) {
@@ -221,38 +140,22 @@ function Activity() {
       return FolderKanban;
     }
 
-    if (
-      action.includes("member") ||
-      action.includes("workspace")
-    ) {
+    if (action.includes("member") || action.includes("workspace")) {
       return Briefcase;
     }
 
     return ActivityIcon;
   };
 
-
   // Loading workspaces
 
-
   if (loadingWorkspaces) {
-    return (
-      <div className="min-h-screen bg-slate-50 p-8">
-        <div className="mx-auto max-w-7xl">
-          <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
-            <p className="text-sm text-slate-500">
-              Loading activity...
-            </p>
-          </div>
-        </div>
-      </div>
-    );
+    return <PageLoading variant="activity">Loading activity...</PageLoading>;
   }
 
   return (
     <div className="min-h-screen bg-slate-50 p-8">
       <div className="mx-auto max-w-7xl">
-
         {/* Header*/}
 
         <div className="mb-6">
@@ -262,13 +165,10 @@ function Activity() {
             </div>
 
             <div>
-              <h1 className="text-3xl font-bold text-slate-900">
-                Activity
-              </h1>
+              <h1 className="text-3xl font-bold text-slate-900">Activity</h1>
 
               <p className="mt-1 text-sm text-slate-500">
-                Keep track of what's happening across your
-                workspaces.
+                Keep track of what's happening across your workspaces.
               </p>
             </div>
           </div>
@@ -278,7 +178,6 @@ function Activity() {
 
         <div className="mb-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end">
-
             {/* Workspace */}
             <div className="flex-1">
               <label className="mb-2 block text-sm font-semibold text-slate-700">
@@ -297,10 +196,7 @@ function Activity() {
                   className="w-full appearance-none rounded-xl border border-slate-200 bg-white py-3 pl-10 pr-4 text-sm font-medium text-slate-700 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
                 >
                   {workspaces.map((workspace) => (
-                    <option
-                      key={workspace._id}
-                      value={workspace._id}
-                    >
+                    <option key={workspace._id} value={workspace._id}>
                       {workspace.name}
                     </option>
                   ))}
@@ -325,65 +221,37 @@ function Activity() {
                   onChange={handleActionChange}
                   className="w-full appearance-none rounded-xl border border-slate-200 bg-white py-3 pl-10 pr-4 text-sm font-medium text-slate-700 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
                 >
-                  <option value="">
-                    All activities
-                  </option>
+                  <option value="">All activities</option>
 
-                  <option value="workspace_created">
-                    Workspace created
-                  </option>
+                  <option value="workspace_created">Workspace created</option>
 
-                  <option value="workspace_updated">
-                    Workspace updated
-                  </option>
+                  <option value="workspace_updated">Workspace updated</option>
 
-                  <option value="workspace_deleted">
-                    Workspace deleted
-                  </option>
+                  <option value="workspace_deleted">Workspace deleted</option>
 
-                  <option value="member_removed">
-                    Member removed
-                  </option>
+                  <option value="member_removed">Member removed</option>
 
                   <option value="member_role_updated">
                     Member role updated
                   </option>
 
-                  <option value="project_created">
-                    Project created
-                  </option>
+                  <option value="project_created">Project created</option>
 
-                  <option value="project_updated">
-                    Project updated
-                  </option>
+                  <option value="project_updated">Project updated</option>
 
-                  <option value="project_deleted">
-                    Project deleted
-                  </option>
+                  <option value="project_deleted">Project deleted</option>
 
-                  <option value="task_created">
-                    Task created
-                  </option>
+                  <option value="task_created">Task created</option>
 
-                  <option value="task_updated">
-                    Task updated
-                  </option>
+                  <option value="task_updated">Task updated</option>
 
-                  <option value="task_deleted">
-                    Task deleted
-                  </option>
+                  <option value="task_deleted">Task deleted</option>
 
-                  <option value="comment_created">
-                    Comment created
-                  </option>
+                  <option value="comment_created">Comment created</option>
 
-                  <option value="comment_updated">
-                    Comment updated
-                  </option>
+                  <option value="comment_updated">Comment updated</option>
 
-                  <option value="comment_deleted">
-                    Comment deleted
-                  </option>
+                  <option value="comment_deleted">Comment deleted</option>
                 </select>
               </div>
             </div>
@@ -393,7 +261,6 @@ function Activity() {
         {/* Activity card */}
 
         <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-
           <div className="border-b border-slate-100 px-6 py-5 sm:px-8">
             <div className="flex items-center justify-between">
               <div>
@@ -403,10 +270,7 @@ function Activity() {
 
                 <p className="mt-1 text-sm text-slate-500">
                   {pagination.total || 0}{" "}
-                  {pagination.total === 1
-                    ? "activity"
-                    : "activities"}{" "}
-                  recorded
+                  {pagination.total === 1 ? "activity" : "activities"} recorded
                 </p>
               </div>
             </div>
@@ -415,17 +279,15 @@ function Activity() {
           {/* Loading */}
           {loadingActivities ? (
             <div className="p-10 text-center">
-              <p className="text-sm text-slate-500">
+              <LoadingState as="p" className="text-sm text-slate-500">
                 Loading activities...
-              </p>
+              </LoadingState>
             </div>
           ) : error ? (
             /* Error */
             <div className="p-10">
               <div className="rounded-xl border border-red-200 bg-red-50 p-5">
-                <p className="text-sm font-medium text-red-600">
-                  {error}
-                </p>
+                <p className="text-sm font-medium text-red-600">{error}</p>
               </div>
             </div>
           ) : activities.length === 0 ? (
@@ -440,17 +302,14 @@ function Activity() {
               </h3>
 
               <p className="mt-1 text-sm text-slate-500">
-                Activity from this workspace will appear
-                here.
+                Activity from this workspace will appear here.
               </p>
             </div>
           ) : (
             /* Activity list */
             <div className="divide-y divide-slate-100">
               {activities.map((activity) => {
-                const Icon = getActivityIcon(
-                  activity.action
-                );
+                const Icon = getActivityIcon(activity.action);
 
                 return (
                   <div
@@ -469,32 +328,22 @@ function Activity() {
                       </p>
 
                       <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-400">
-
                         {/* User */}
                         <span className="flex items-center gap-1.5">
                           <User size={13} />
 
-                          {activity.user?.name ||
-                            "Unknown user"}
+                          {activity.user?.name || "Unknown user"}
                         </span>
 
-                        <span className="text-slate-300">
-                          •
-                        </span>
+                        <span className="text-slate-300">•</span>
 
                         {/* Time */}
-                        <span>
-                          {formatRelativeTime(
-                            activity.createdAt
-                          )}
-                        </span>
+                        <span>{formatRelativeTime(activity.createdAt)}</span>
 
                         {/* Project */}
                         {activity.project?.name && (
                           <>
-                            <span className="text-slate-300">
-                              •
-                            </span>
+                            <span className="text-slate-300">•</span>
 
                             <span className="flex items-center gap-1.5">
                               <FolderKanban size={13} />
@@ -507,9 +356,7 @@ function Activity() {
                         {/* Task */}
                         {activity.task?.title && (
                           <>
-                            <span className="text-slate-300">
-                              •
-                            </span>
+                            <span className="text-slate-300">•</span>
 
                             <span className="flex items-center gap-1.5">
                               <ListTodo size={13} />
@@ -533,10 +380,8 @@ function Activity() {
             activities.length > 0 &&
             pagination.totalPages > 1 && (
               <div className="flex items-center justify-between border-t border-slate-100 px-6 py-4 sm:px-8">
-
                 <p className="text-sm text-slate-500">
-                  Page {pagination.page} of{" "}
-                  {pagination.totalPages}
+                  Page {pagination.page} of {pagination.totalPages}
                 </p>
 
                 <div className="flex items-center gap-2">
@@ -544,9 +389,7 @@ function Activity() {
                     type="button"
                     disabled={page <= 1}
                     onClick={() =>
-                      setPage((current) =>
-                        Math.max(current - 1, 1)
-                      )
+                      setPage((current) => Math.max(current - 1, 1))
                     }
                     className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-500 transition hover:bg-slate-50 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-40"
                     aria-label="Previous page"
@@ -556,15 +399,10 @@ function Activity() {
 
                   <button
                     type="button"
-                    disabled={
-                      page >= pagination.totalPages
-                    }
+                    disabled={page >= pagination.totalPages}
                     onClick={() =>
                       setPage((current) =>
-                        Math.min(
-                          current + 1,
-                          pagination.totalPages
-                        )
+                        Math.min(current + 1, pagination.totalPages)
                       )
                     }
                     className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-500 transition hover:bg-slate-50 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-40"

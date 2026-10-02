@@ -1,8 +1,15 @@
 import { useEffect, useState } from "react";
 import { Search, Eye, Trash2 } from "lucide-react";
-import api from "../../services/api";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+
+import { formatLocaleDate } from "../../utils/dates.js";
+import {
+  getAdminWorkspaces,
+  deleteAdminWorkspace,
+} from "../../services/adminService.js";
+import { getErrorDetails, getErrorMessage } from "../../utils/errors.js";
+import LoadingState from "../../components/ui/LoadingState.jsx";
 
 function AdminWorkspaces() {
   const [workspaces, setWorkspaces] = useState([]);
@@ -13,19 +20,13 @@ function AdminWorkspaces() {
 
   const fetchWorkspaces = async () => {
     try {
-      const response = await api.get("/admin/workspaces");
+      const response = await getAdminWorkspaces();
 
-      setWorkspaces(response.data.workspaces);
+      setWorkspaces(response.workspaces);
     } catch (error) {
-      console.error(
-        "Failed to fetch workspaces:",
-        error.response?.data || error.message
-      );
+      console.error("Failed to fetch workspaces:", getErrorDetails(error));
 
-      toast.error(
-        error.response?.data?.message ||
-          "Failed to load workspaces"
-      );
+      toast.error(getErrorMessage(error, "Failed to load workspaces"));
     } finally {
       setLoading(false);
     }
@@ -41,26 +42,15 @@ function AdminWorkspaces() {
     }
 
     try {
-      const response = await api.delete(
-        `/admin/workspaces/${workspaceId}`
-      );
+      const response = await deleteAdminWorkspace(workspaceId);
 
-      toast.success(
-        response.data.message ||
-          "Workspace deleted successfully"
-      );
+      toast.success(response.message || "Workspace deleted successfully");
 
       fetchWorkspaces();
     } catch (error) {
-      console.error(
-        "Failed to delete workspace:",
-        error.response?.data || error.message
-      );
+      console.error("Failed to delete workspace:", getErrorDetails(error));
 
-      toast.error(
-        error.response?.data?.message ||
-          "Failed to delete workspace"
-      );
+      toast.error(getErrorMessage(error, "Failed to delete workspace"));
     }
   };
 
@@ -68,23 +58,15 @@ function AdminWorkspaces() {
     fetchWorkspaces();
   }, []);
 
-  const filteredWorkspaces = workspaces.filter(
-    (workspace) => {
-      const searchTerm = search.toLowerCase();
+  const filteredWorkspaces = workspaces.filter((workspace) => {
+    const searchTerm = search.toLowerCase();
 
-      return (
-        workspace.name
-          ?.toLowerCase()
-          .includes(searchTerm) ||
-        workspace.owner?.name
-          ?.toLowerCase()
-          .includes(searchTerm) ||
-        workspace.owner?.email
-          ?.toLowerCase()
-          .includes(searchTerm)
-      );
-    }
-  );
+    return (
+      workspace.name?.toLowerCase().includes(searchTerm) ||
+      workspace.owner?.name?.toLowerCase().includes(searchTerm) ||
+      workspace.owner?.email?.toLowerCase().includes(searchTerm)
+    );
+  });
 
   return (
     <div className="p-4 sm:p-6 lg:p-8">
@@ -97,9 +79,9 @@ function AdminWorkspaces() {
       </p>
 
       {loading ? (
-        <p className="mt-8 text-slate-500">
+        <LoadingState as="p" className="mt-8 text-slate-500">
           Loading workspaces...
-        </p>
+        </LoadingState>
       ) : (
         <div className="mt-6 overflow-hidden rounded-xl border border-slate-200 bg-white sm:mt-8">
           {/* Search */}
@@ -113,9 +95,7 @@ function AdminWorkspaces() {
               <input
                 type="text"
                 value={search}
-                onChange={(e) =>
-                  setSearch(e.target.value)
-                }
+                onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search workspaces or owners..."
                 className="h-10 w-full rounded-lg border border-slate-200 bg-white pl-10 pr-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10"
               />
@@ -123,9 +103,7 @@ function AdminWorkspaces() {
 
             <span className="w-fit whitespace-nowrap rounded-lg border border-blue-100 bg-blue-50 px-4 py-2 text-sm font-medium text-blue-600">
               {filteredWorkspaces.length}{" "}
-              {filteredWorkspaces.length === 1
-                ? "workspace"
-                : "workspaces"}
+              {filteredWorkspaces.length === 1 ? "workspace" : "workspaces"}
             </span>
           </div>
 
@@ -179,16 +157,14 @@ function AdminWorkspaces() {
                           </p>
 
                           <p className="mt-1 max-w-xs truncate text-xs text-slate-500">
-                            {workspace.description ||
-                              "No description"}
+                            {workspace.description || "No description"}
                           </p>
                         </div>
                       </td>
 
                       <td className="px-4 py-4 sm:px-6">
                         <p className="text-sm text-slate-900">
-                          {workspace.owner?.name ||
-                            "Unknown"}
+                          {workspace.owner?.name || "Unknown"}
                         </p>
 
                         <p className="mt-1 text-xs text-slate-500">
@@ -203,18 +179,14 @@ function AdminWorkspaces() {
                       </td>
 
                       <td className="px-4 py-4 text-sm text-slate-600 sm:px-6">
-                        {new Date(
-                          workspace.createdAt
-                        ).toLocaleDateString()}
+                        {formatLocaleDate(workspace.createdAt)}
                       </td>
 
                       <td className="px-4 py-4 sm:px-6">
                         <div className="flex items-center gap-2">
                           <button
                             onClick={() =>
-                              navigate(
-                                `/admin/workspaces/${workspace._id}`
-                              )
+                              navigate(`/admin/workspaces/${workspace._id}`)
                             }
                             className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-blue-50 px-3 py-1.5 text-sm font-medium text-blue-600 transition hover:bg-blue-100"
                           >
@@ -223,11 +195,7 @@ function AdminWorkspaces() {
                           </button>
 
                           <button
-                            onClick={() =>
-                              handleDeleteWorkspace(
-                                workspace._id
-                              )
-                            }
+                            onClick={() => handleDeleteWorkspace(workspace._id)}
                             className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-red-50 px-3 py-1.5 text-sm font-medium text-red-600 transition hover:bg-red-100"
                           >
                             <Trash2 size={15} />

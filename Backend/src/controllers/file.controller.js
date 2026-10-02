@@ -1,48 +1,44 @@
 import crypto from "crypto";
 
+import { requireDocument } from "../utils/requireDocument.js";
+import { requireWorkspaceAccess } from "../utils/workspaceAccess.js";
 import File from "../models/file.model.js";
 import Project from "../models/project.model.js";
 import Task from "../models/task.model.js";
-import Workspace from "../models/workspace.model.js";
 import AppError from "../utils/AppError.js";
-import { getLocalFilePath, getStorageUrl, uploadToStorage } from "../utils/storage.service.js";
+import {
+    getLocalFilePath,
+    getStorageUrl,
+    uploadToStorage,
+} from "../utils/storage.service.js";
 import { fileUploadSchema } from "../validators/file.validator.js";
 
 export const uploadFile = async (req, res, next) => {
     try {
-        const { workspaceId, projectId, taskId } =
-            fileUploadSchema.parse(req.body);
+        const { workspaceId, projectId, taskId } = fileUploadSchema.parse(
+            req.body
+        );
 
         if (!req.file) {
             throw new AppError("File is required", 400);
         }
 
         // Check workspace membership
-        const workspace = await Workspace.findOne({
-            _id: workspaceId,
-            "members.user": req.user.userId,
+        await requireWorkspaceAccess(workspaceId, req.user.userId, {
+            message: "Workspace not found or access denied",
+            statusCode: 404,
         });
-
-        if (!workspace) {
-            throw new AppError(
-                "Workspace not found or access denied",
-                404
-            );
-        }
 
         // If project is provided, verify that it belongs to the same workspace
         if (projectId) {
-            const project = await Project.findOne({
-                _id: projectId,
-                workspace: workspaceId,
-            });
-
-            if (!project) {
-                throw new AppError(
-                    "Project not found or does not belong to this workspace",
-                    404
-                );
-            }
+            const project = await requireDocument(
+                Project.findOne({
+                    _id: projectId,
+                    workspace: workspaceId,
+                }),
+                "Project not found or does not belong to this workspace",
+                404
+            );
         }
 
         // If task is provided, verify that it belongs
@@ -55,17 +51,14 @@ export const uploadFile = async (req, res, next) => {
                 );
             }
 
-            const task = await Task.findOne({
-                _id: taskId,
-                project: projectId,
-            });
-
-            if (!task) {
-                throw new AppError(
-                    "Task not found or does not belong to this project",
-                    404
-                );
-            }
+            const task = await requireDocument(
+                Task.findOne({
+                    _id: taskId,
+                    project: projectId,
+                }),
+                "Task not found or does not belong to this project",
+                404
+            );
         }
 
         const uniqueId = crypto.randomUUID();
@@ -77,12 +70,8 @@ export const uploadFile = async (req, res, next) => {
         const storageKey = [
             "workspaces",
             workspaceId,
-            projectId
-                ? `projects/${projectId}`
-                : "workspace",
-            taskId
-                ? `tasks/${taskId}`
-                : null,
+            projectId ? `projects/${projectId}` : "workspace",
+            taskId ? `tasks/${taskId}` : null,
             `${uniqueId}-${safeFileName}`,
         ]
             .filter(Boolean)
@@ -119,17 +108,10 @@ export const getWorkspaceFiles = async (req, res, next) => {
     try {
         const { workspaceId } = req.params;
 
-        const workspace = await Workspace.findOne({
-            _id: workspaceId,
-            "members.user": req.user.userId,
+        await requireWorkspaceAccess(workspaceId, req.user.userId, {
+            message: "Workspace not found or access denied",
+            statusCode: 404,
         });
-
-        if (!workspace) {
-            throw new AppError(
-                "Workspace not found or access denied",
-                404
-            );
-        }
 
         const files = await File.find({
             workspace: workspaceId,
@@ -152,23 +134,16 @@ export const getProjectFiles = async (req, res, next) => {
     try {
         const { projectId } = req.params;
 
-        const project = await Project.findById(projectId);
+        const project = await requireDocument(
+            Project.findById(projectId),
+            "Project not found",
+            404
+        );
 
-        if (!project) {
-            throw new AppError("Project not found", 404);
-        }
-
-        const workspace = await Workspace.findOne({
-            _id: project.workspace,
-            "members.user": req.user.userId,
+        await requireWorkspaceAccess(project.workspace, req.user.userId, {
+            message: "You do not have access to this project",
+            statusCode: 403,
         });
-
-        if (!workspace) {
-            throw new AppError(
-                "You do not have access to this project",
-                403
-            );
-        }
 
         const files = await File.find({
             project: projectId,
@@ -190,26 +165,16 @@ export const getTaskFiles = async (req, res, next) => {
     try {
         const { taskId } = req.params;
 
-        const task = await Task.findById(taskId).populate(
-            "project",
-            "workspace"
+        const task = await requireDocument(
+            Task.findById(taskId).populate("project", "workspace"),
+            "Task not found",
+            404
         );
 
-        if (!task) {
-            throw new AppError("Task not found", 404);
-        }
-
-        const workspace = await Workspace.findOne({
-            _id: task.project.workspace,
-            "members.user": req.user.userId,
+        await requireWorkspaceAccess(task.project.workspace, req.user.userId, {
+            message: "You do not have access to this task",
+            statusCode: 403,
         });
-
-        if (!workspace) {
-            throw new AppError(
-                "You do not have access to this task",
-                403
-            );
-        }
 
         const files = await File.find({
             task: taskId,
@@ -230,23 +195,16 @@ export const getFileAccess = async (req, res, next) => {
     try {
         const { fileId } = req.params;
 
-        const file = await File.findById(fileId);
+        const file = await requireDocument(
+            File.findById(fileId),
+            "File not found",
+            404
+        );
 
-        if (!file) {
-            throw new AppError("File not found", 404);
-        }
-
-        const workspace = await Workspace.findOne({
-            _id: file.workspace,
-            "members.user": req.user.userId,
+        await requireWorkspaceAccess(file.workspace, req.user.userId, {
+            message: "You do not have access to this file",
+            statusCode: 403,
         });
-
-        if (!workspace) {
-            throw new AppError(
-                "You do not have access to this file",
-                403
-            );
-        }
 
         if (process.env.STORAGE_PROVIDER === "r2") {
             const url = await getStorageUrl(file.storageKey);
@@ -270,23 +228,16 @@ export const downloadFile = async (req, res, next) => {
     try {
         const { fileId } = req.params;
 
-        const file = await File.findById(fileId);
+        const file = await requireDocument(
+            File.findById(fileId),
+            "File not found",
+            404
+        );
 
-        if (!file) {
-            throw new AppError("File not found", 404);
-        }
-
-        const workspace = await Workspace.findOne({
-            _id: file.workspace,
-            "members.user": req.user.userId,
+        await requireWorkspaceAccess(file.workspace, req.user.userId, {
+            message: "You do not have access to this file",
+            statusCode: 403,
         });
-
-        if (!workspace) {
-            throw new AppError(
-                "You do not have access to this file",
-                403
-            );
-        }
 
         if (process.env.STORAGE_PROVIDER === "r2") {
             throw new AppError(
@@ -297,15 +248,11 @@ export const downloadFile = async (req, res, next) => {
 
         const filePath = getLocalFilePath(file.storageKey);
 
-        return res.download(
-            filePath,
-            file.originalName,
-            (error) => {
-                if (error && !res.headersSent) {
-                    next(error);
-                }
+        return res.download(filePath, file.originalName, (error) => {
+            if (error && !res.headersSent) {
+                next(error);
             }
-        );
+        });
     } catch (error) {
         next(error);
     }

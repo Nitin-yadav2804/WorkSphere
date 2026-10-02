@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
-import {
-  Activity as ActivityIcon,
-  Search,
-} from "lucide-react";
-import api from "../../services/api";
+import { Activity as ActivityIcon, Search } from "lucide-react";
 import { toast } from "sonner";
+
+import { formatLocaleDateTime } from "../../utils/dates.js";
+import { getAdminActivities } from "../../services/adminService.js";
+import { getErrorDetails, getErrorMessage } from "../../utils/errors.js";
+import LoadingState from "../../components/ui/LoadingState.jsx";
 
 function AdminActivity() {
   const [activities, setActivities] = useState([]);
@@ -13,19 +14,13 @@ function AdminActivity() {
 
   const fetchActivities = async () => {
     try {
-      const response = await api.get("/admin/activity");
+      const response = await getAdminActivities();
 
-      setActivities(response.data.activities);
+      setActivities(response.activities);
     } catch (error) {
-      console.error(
-        "Failed to fetch activities:",
-        error.response?.data || error.message
-      );
+      console.error("Failed to fetch activities:", getErrorDetails(error));
 
-      toast.error(
-        error.response?.data?.message ||
-          "Failed to load activity"
-      );
+      toast.error(getErrorMessage(error, "Failed to load activity"));
     } finally {
       setLoading(false);
     }
@@ -35,35 +30,19 @@ function AdminActivity() {
     fetchActivities();
   }, []);
 
-  const filteredActivities = activities.filter(
-    (activity) => {
-      const searchText = search.toLowerCase();
+  const filteredActivities = activities.filter((activity) => {
+    const searchText = search.toLowerCase();
 
-      return (
-        activity.action
-          ?.toLowerCase()
-          .includes(searchText) ||
-        activity.description
-          ?.toLowerCase()
-          .includes(searchText) ||
-        activity.user?.name
-          ?.toLowerCase()
-          .includes(searchText) ||
-        activity.user?.email
-          ?.toLowerCase()
-          .includes(searchText) ||
-        activity.workspace?.name
-          ?.toLowerCase()
-          .includes(searchText) ||
-        activity.project?.name
-          ?.toLowerCase()
-          .includes(searchText) ||
-        activity.task?.title
-          ?.toLowerCase()
-          .includes(searchText)
-      );
-    }
-  );
+    return (
+      activity.action?.toLowerCase().includes(searchText) ||
+      activity.description?.toLowerCase().includes(searchText) ||
+      activity.user?.name?.toLowerCase().includes(searchText) ||
+      activity.user?.email?.toLowerCase().includes(searchText) ||
+      activity.workspace?.name?.toLowerCase().includes(searchText) ||
+      activity.project?.name?.toLowerCase().includes(searchText) ||
+      activity.task?.title?.toLowerCase().includes(searchText)
+    );
+  });
 
   return (
     <div className="p-4 sm:p-6 lg:p-8">
@@ -75,9 +54,7 @@ function AdminActivity() {
           </div>
 
           <div className="min-w-0">
-            <h1 className="text-2xl font-bold text-slate-900">
-              Activity
-            </h1>
+            <h1 className="text-2xl font-bold text-slate-900">Activity</h1>
 
             <p className="mt-1 text-sm text-slate-500">
               Monitor recent activity across WorkSphere.
@@ -98,9 +75,7 @@ function AdminActivity() {
             type="text"
             placeholder="Search activity..."
             value={search}
-            onChange={(e) =>
-              setSearch(e.target.value)
-            }
+            onChange={(e) => setSearch(e.target.value)}
             className="w-full rounded-lg border border-slate-200 bg-white py-2.5 pl-10 pr-4 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
           />
         </div>
@@ -113,9 +88,12 @@ function AdminActivity() {
       {/* Activity Table */}
       <div className="mt-6 overflow-hidden rounded-xl border border-slate-200 bg-white">
         {loading ? (
-          <div className="px-6 py-10 text-center text-sm text-slate-500">
+          <LoadingState
+            as="div"
+            className="px-6 py-10 text-center text-sm text-slate-500"
+          >
             Loading activity...
-          </div>
+          </LoadingState>
         ) : filteredActivities.length === 0 ? (
           <div className="px-6 py-10 text-center text-sm text-slate-500">
             No activity found.
@@ -152,67 +130,56 @@ function AdminActivity() {
               </thead>
 
               <tbody className="divide-y divide-slate-100">
-                {filteredActivities.map(
-                  (activity) => (
-                    <tr
-                      key={activity._id}
-                      className="transition hover:bg-slate-50"
-                    >
-                      {/* Action */}
-                      <td className="px-4 py-4 sm:px-6">
-                        <p className="font-medium capitalize text-slate-900">
-                          {activity.action ||
-                            "Activity"}
-                        </p>
+                {filteredActivities.map((activity) => (
+                  <tr
+                    key={activity._id}
+                    className="transition hover:bg-slate-50"
+                  >
+                    {/* Action */}
+                    <td className="px-4 py-4 sm:px-6">
+                      <p className="font-medium capitalize text-slate-900">
+                        {activity.action || "Activity"}
+                      </p>
 
-                        <p className="mt-1 max-w-xs truncate text-sm text-slate-500">
-                          {activity.description ||
-                            "—"}
-                        </p>
-                      </td>
+                      <p className="mt-1 max-w-xs truncate text-sm text-slate-500">
+                        {activity.description || "—"}
+                      </p>
+                    </td>
 
-                      {/* User */}
-                      <td className="px-4 py-4 sm:px-6">
-                        <p className="text-sm font-medium text-slate-700">
-                          {activity.user?.name ||
-                            "Unknown"}
-                        </p>
+                    {/* User */}
+                    <td className="px-4 py-4 sm:px-6">
+                      <p className="text-sm font-medium text-slate-700">
+                        {activity.user?.name || "Unknown"}
+                      </p>
 
-                        <p className="text-xs text-slate-500">
-                          {activity.user?.email ||
-                            "—"}
-                        </p>
-                      </td>
+                      <p className="text-xs text-slate-500">
+                        {activity.user?.email || "—"}
+                      </p>
+                    </td>
 
-                      {/* Workspace */}
-                      <td className="px-4 py-4 text-sm text-slate-700 sm:px-6">
-                        {activity.workspace?.name ||
-                          "—"}
-                      </td>
+                    {/* Workspace */}
+                    <td className="px-4 py-4 text-sm text-slate-700 sm:px-6">
+                      {activity.workspace?.name || "—"}
+                    </td>
 
-                      {/* Project */}
-                      <td className="px-4 py-4 text-sm text-slate-700 sm:px-6">
-                        {activity.project?.name ||
-                          "—"}
-                      </td>
+                    {/* Project */}
+                    <td className="px-4 py-4 text-sm text-slate-700 sm:px-6">
+                      {activity.project?.name || "—"}
+                    </td>
 
-                      {/* Task */}
-                      <td className="px-4 py-4 text-sm text-slate-700 sm:px-6">
-                        {activity.task?.title ||
-                          "—"}
-                      </td>
+                    {/* Task */}
+                    <td className="px-4 py-4 text-sm text-slate-700 sm:px-6">
+                      {activity.task?.title || "—"}
+                    </td>
 
-                      {/* Time */}
-                      <td className="px-4 py-4 text-sm text-slate-500 sm:px-6">
-                        {activity.createdAt
-                          ? new Date(
-                              activity.createdAt
-                            ).toLocaleString()
-                          : "—"}
-                      </td>
-                    </tr>
-                  )
-                )}
+                    {/* Time */}
+                    <td className="px-4 py-4 text-sm text-slate-500 sm:px-6">
+                      {activity.createdAt
+                        ? formatLocaleDateTime(activity.createdAt)
+                        : "—"}
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>

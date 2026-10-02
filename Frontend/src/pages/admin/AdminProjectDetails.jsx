@@ -1,12 +1,15 @@
 import { useEffect, useState } from "react";
-import {
-  ArrowLeft,
-  ClipboardList,
-  User,
-} from "lucide-react";
+import { ArrowLeft, ClipboardList, User } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
-import api from "../../services/api";
 import { toast } from "sonner";
+
+import { formatLocaleDate } from "../../utils/dates.js";
+import {
+  getAdminProject,
+  deleteAdminTask,
+} from "../../services/adminService.js";
+import PageLoading from "../../components/ui/PageLoading.jsx";
+import { getErrorDetails, getErrorMessage } from "../../utils/errors.js";
 
 function AdminProjectDetails() {
   const { projectId } = useParams();
@@ -18,22 +21,14 @@ function AdminProjectDetails() {
 
   const fetchProject = async () => {
     try {
-      const response = await api.get(
-        `/admin/projects/${projectId}`
-      );
+      const response = await getAdminProject(projectId);
 
-      setProject(response.data.project);
-      setTasks(response.data.tasks);
+      setProject(response.project);
+      setTasks(response.tasks);
     } catch (error) {
-      console.error(
-        "Failed to fetch project:",
-        error.response?.data || error.message
-      );
+      console.error("Failed to fetch project:", getErrorDetails(error));
 
-      toast.error(
-        error.response?.data?.message ||
-          "Failed to load project"
-      );
+      toast.error(getErrorMessage(error, "Failed to load project"));
     } finally {
       setLoading(false);
     }
@@ -53,46 +48,27 @@ function AdminProjectDetails() {
     }
 
     try {
-      const response = await api.delete(
-        `/admin/tasks/${taskId}`
-      );
+      const response = await deleteAdminTask(taskId);
 
-      toast.success(
-        response.data.message ||
-          "Task deleted successfully"
-      );
+      toast.success(response.message || "Task deleted successfully");
 
       fetchProject();
     } catch (error) {
-      console.error(
-        "Failed to delete task:",
-        error.response?.data || error.message
-      );
+      console.error("Failed to delete task:", getErrorDetails(error));
 
-      toast.error(
-        error.response?.data?.message ||
-          "Failed to delete task"
-      );
+      toast.error(getErrorMessage(error, "Failed to delete task"));
     }
   };
 
   if (loading) {
-    return (
-      <div className="p-4 sm:p-6 lg:p-8">
-        <p className="text-slate-500">
-          Loading project...
-        </p>
-      </div>
-    );
+    return <PageLoading variant="admin">Loading project...</PageLoading>;
   }
 
   if (!project) {
     return (
       <div className="p-4 sm:p-6 lg:p-8">
         <button
-          onClick={() =>
-            navigate("/admin/projects")
-          }
+          onClick={() => navigate("/admin/projects")}
           className="mb-6 inline-flex cursor-pointer items-center gap-2 text-sm font-medium text-blue-600 hover:text-blue-700"
         >
           <ArrowLeft size={16} />
@@ -116,9 +92,7 @@ function AdminProjectDetails() {
     <div className="p-4 sm:p-6 lg:p-8">
       {/* Back button */}
       <button
-        onClick={() =>
-          navigate("/admin/projects")
-        }
+        onClick={() => navigate("/admin/projects")}
         className="mb-6 inline-flex cursor-pointer items-center gap-2 text-sm font-medium text-blue-600 transition hover:text-blue-700"
       >
         <ArrowLeft size={16} />
@@ -128,9 +102,7 @@ function AdminProjectDetails() {
       {/* Project header */}
       <div>
         <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:gap-3">
-          <h1 className="text-2xl font-bold text-slate-900">
-            {project.name}
-          </h1>
+          <h1 className="text-2xl font-bold text-slate-900">{project.name}</h1>
 
           <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium capitalize text-slate-700">
             {project.status}
@@ -138,8 +110,7 @@ function AdminProjectDetails() {
         </div>
 
         <p className="mt-2 text-sm text-slate-500 sm:text-base">
-          {project.description ||
-            "No description provided."}
+          {project.description || "No description provided."}
         </p>
       </div>
 
@@ -148,15 +119,10 @@ function AdminProjectDetails() {
         {/* Total Tasks */}
         <div className="rounded-xl border border-slate-200 bg-white p-5">
           <div className="flex items-center gap-3">
-            <ClipboardList
-              size={20}
-              className="shrink-0 text-blue-600"
-            />
+            <ClipboardList size={20} className="shrink-0 text-blue-600" />
 
             <div>
-              <p className="text-sm text-slate-500">
-                Total Tasks
-              </p>
+              <p className="text-sm text-slate-500">Total Tasks</p>
 
               <p className="mt-1 text-xl font-semibold text-slate-900">
                 {tasks.length}
@@ -168,19 +134,13 @@ function AdminProjectDetails() {
         {/* Created By */}
         <div className="rounded-xl border border-slate-200 bg-white p-5">
           <div className="flex items-center gap-3">
-            <User
-              size={20}
-              className="shrink-0 text-blue-600"
-            />
+            <User size={20} className="shrink-0 text-blue-600" />
 
             <div className="min-w-0">
-              <p className="text-sm text-slate-500">
-                Created By
-              </p>
+              <p className="text-sm text-slate-500">Created By</p>
 
               <p className="mt-1 truncate font-semibold text-slate-900">
-                {project.createdBy?.name ||
-                  "Unknown"}
+                {project.createdBy?.name || "Unknown"}
               </p>
 
               <p className="truncate text-xs text-slate-500">
@@ -192,9 +152,7 @@ function AdminProjectDetails() {
 
         {/* Workspace */}
         <div className="rounded-xl border border-slate-200 bg-white p-5">
-          <p className="text-sm text-slate-500">
-            Workspace
-          </p>
+          <p className="text-sm text-slate-500">Workspace</p>
 
           <p className="mt-1 truncate font-semibold text-slate-900">
             {project.workspace?.name || "—"}
@@ -251,28 +209,22 @@ function AdminProjectDetails() {
 
               <tbody className="divide-y divide-slate-100">
                 {tasks.map((task) => (
-                  <tr
-                    key={task._id}
-                    className="transition hover:bg-slate-50"
-                  >
+                  <tr key={task._id} className="transition hover:bg-slate-50">
                     {/* Task */}
                     <td className="px-4 py-4 sm:px-6">
                       <p className="font-medium text-slate-900">
-                        {task.title ||
-                          "Untitled task"}
+                        {task.title || "Untitled task"}
                       </p>
 
                       <p className="mt-1 max-w-md truncate text-sm text-slate-500">
-                        {task.description ||
-                          "No description"}
+                        {task.description || "No description"}
                       </p>
                     </td>
 
                     {/* Assigned To */}
                     <td className="px-4 py-4 sm:px-6">
                       <p className="text-sm font-medium text-slate-700">
-                        {task.assignedTo?.name ||
-                          "Unassigned"}
+                        {task.assignedTo?.name || "Unassigned"}
                       </p>
 
                       <p className="text-xs text-slate-500">
@@ -296,31 +248,21 @@ function AdminProjectDetails() {
 
                     {/* Due Date */}
                     <td className="px-4 py-4 text-sm text-slate-500 sm:px-6">
-                      {task.dueDate
-                        ? new Date(
-                            task.dueDate
-                          ).toLocaleDateString()
-                        : "—"}
+                      {task.dueDate ? formatLocaleDate(task.dueDate) : "—"}
                     </td>
 
                     {/* Actions */}
                     <td className="px-4 py-4 sm:px-6">
                       <div className="flex items-center gap-2">
                         <button
-                          onClick={() =>
-                            navigate(
-                              `/admin/tasks/${task._id}`
-                            )
-                          }
+                          onClick={() => navigate(`/admin/tasks/${task._id}`)}
                           className="inline-flex cursor-pointer items-center rounded-lg bg-blue-50 px-3 py-1.5 text-sm font-medium text-blue-600 transition hover:bg-blue-100"
                         >
                           View
                         </button>
 
                         <button
-                          onClick={() =>
-                            handleDeleteTask(task._id)
-                          }
+                          onClick={() => handleDeleteTask(task._id)}
                           className="inline-flex cursor-pointer items-center rounded-lg bg-red-50 px-3 py-1.5 text-sm font-medium text-red-600 transition hover:bg-red-100"
                         >
                           Delete
