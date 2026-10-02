@@ -84,3 +84,9 @@ export const getTaskFiles = async (taskId) => {
 
     return response.data;
 };
+
+export const deleteFile = async (fileId) => {
+    const response = await api.delete(`/files/${fileId}`);
+
+    return response.data;
+};

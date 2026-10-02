@@ -418,7 +418,14 @@ function TaskDetails() {
           </div>
 
           <div className="p-6">
-            <FileList files={files} />
+            <FileList
+              files={files}
+              onDeleted={(fileId) =>
+                setFiles((current) =>
+                  current.filter((file) => file._id !== fileId)
+                )
+              }
+            />
           </div>
         </div>
 

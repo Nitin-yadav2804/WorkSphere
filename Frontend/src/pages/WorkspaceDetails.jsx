@@ -852,7 +852,14 @@ function WorkspaceDetails() {
               </div>
 
               <div className="border-t border-slate-100 p-6 sm:p-8">
-                <FileList files={files} />
+                <FileList
+                  files={files}
+                  onDeleted={(fileId) =>
+                    setFiles((current) =>
+                      current.filter((file) => file._id !== fileId)
+                    )
+                  }
+                />
               </div>
             </div>
           )}

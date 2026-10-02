@@ -138,6 +138,7 @@ The Settings page provides:
 - File metadata stored in MongoDB
 - MIME type and 10 MB size validation
 - Access checks before download or preview
+- Authorized file deletion for uploaders, workspace owners, and managers
 - Cloudflare R2 signed URLs through the backend
 
 ### 💬 Realtime Collaboration

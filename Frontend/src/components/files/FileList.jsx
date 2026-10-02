@@ -1,14 +1,15 @@
-import { Download, Eye, FileText } from "lucide-react";
+import { Download, Eye, FileText, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useState } from "react";
 
 import { saveBlob } from "../../utils/download.js";
 import { getErrorMessage } from "../../utils/errors.js";
 import FilePreviewModal from "./FilePreviewModal";
-import { downloadFile } from "../../services/fileService";
+import { deleteFile, downloadFile } from "../../services/fileService";
 
-function FileList({ files }) {
+function FileList({ files, onDeleted }) {
   const [previewFile, setPreviewFile] = useState(null);
+  const [deletingFileId, setDeletingFileId] = useState(null);
 
   const handleDownload = async (fileId, fileName) => {
     try {
@@ -17,6 +18,25 @@ function FileList({ files }) {
       saveBlob(blob, fileName);
     } catch (error) {
       toast.error(getErrorMessage(error, "Failed to download file"));
+    }
+  };
+
+  const handleDelete = async (file) => {
+    const confirmed = window.confirm(
+      `Delete "${file.originalName}"? This cannot be undone.`
+    );
+
+    if (!confirmed) return;
+
+    try {
+      setDeletingFileId(file._id);
+      await deleteFile(file._id);
+      onDeleted?.(file._id);
+      toast.success("File deleted");
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Failed to delete file"));
+    } finally {
+      setDeletingFileId(null);
     }
   };
 
@@ -62,6 +82,16 @@ function FileList({ files }) {
               title="Download"
             >
               <Download size={18} />
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleDelete(file)}
+              disabled={deletingFileId === file._id}
+              className="cursor-pointer rounded-lg p-2 text-slate-500 transition hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-50"
+              title="Delete"
+            >
+              <Trash2 size={18} />
             </button>
           </div>
         </div>

@@ -10,6 +10,7 @@ import {
     getLocalFilePath,
     getStorageUrl,
     uploadToStorage,
+    deleteFromStorage,
 } from "../utils/storage.service.js";
 import { fileUploadSchema } from "../validators/file.validator.js";
 
@@ -252,6 +253,52 @@ export const downloadFile = async (req, res, next) => {
             if (error && !res.headersSent) {
                 next(error);
             }
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const deleteFile = async (req, res, next) => {
+    try {
+        const { fileId } = req.params;
+
+        const file = await requireDocument(
+            File.findById(fileId),
+            "File not found",
+            404
+        );
+
+        const workspace = await requireWorkspaceAccess(
+            file.workspace,
+            req.user.userId,
+            {
+                message: "You do not have access to this file",
+                statusCode: 403,
+            }
+        );
+
+        const isOwner = String(file.uploadedBy) === String(req.user.userId);
+        const isWorkspaceOwner = String(workspace.owner) === String(req.user.userId);
+        const member = workspace.members.find(
+            (item) => String(item.user) === String(req.user.userId)
+        );
+        const isWorkspaceManager = member?.role === "manager";
+
+        if (!isOwner && !isWorkspaceOwner && !isWorkspaceManager) {
+            throw new AppError(
+                "Only the file uploader, workspace owner, or workspace manager can delete this file",
+                403
+            );
+        }
+
+        await deleteFromStorage(file.storageKey);
+        await File.findByIdAndDelete(fileId);
+
+        return res.status(200).json({
+            success: true,
+            message: "File deleted successfully",
+            fileId,
         });
     } catch (error) {
         next(error);

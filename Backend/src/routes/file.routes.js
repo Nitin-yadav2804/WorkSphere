@@ -1,5 +1,5 @@
 import express from "express";
-import { downloadFile, getFileAccess, getProjectFiles, getTaskFiles, getWorkspaceFiles, uploadFile } from "../controllers/file.controller.js";
+import { deleteFile, downloadFile, getFileAccess, getProjectFiles, getTaskFiles, getWorkspaceFiles, uploadFile } from "../controllers/file.controller.js";
 import authMiddleware from "../middleware/auth.middleware.js";
 import upload from "../middleware/upload.middleware.js";
 
@@ -28,6 +28,12 @@ router.get(
     "/:fileId/download",
     authMiddleware,
     downloadFile
+);
+
+router.delete(
+    "/:fileId",
+    authMiddleware,
+    deleteFile
 );
 
 router.get(
