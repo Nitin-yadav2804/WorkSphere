@@ -49,6 +49,8 @@ export const initializeSocket = (httpServer) => {
     });
 
     io.on("connection", (socket) => {
+        socket.data.workspaceIds = new Set();
+
         socket.on("join:task", async (taskId, callback) => {
             try {
                 await ensureTaskAccess(taskId, socket.user.userId);
@@ -66,6 +68,8 @@ export const initializeSocket = (httpServer) => {
                     statusCode: 403,
                 });
                 socket.join(`workspace:${workspaceId}`);
+                socket.data.workspaceIds.add(String(workspaceId));
+                emitWorkspacePresence(workspaceId);
                 callback?.({ success: true });
             } catch (error) {
                 callback?.({ success: false, message: error.message });
@@ -91,6 +95,22 @@ export const initializeSocket = (httpServer) => {
                 callback?.({ success: false, message: error.message });
             }
         });
+
+        socket.on("chat:typing", ({ workspaceId, isTyping }) => {
+            const room = `workspace:${workspaceId}`;
+            if (!socket.rooms.has(room)) return;
+
+            socket.to(room).emit("chat:typing", {
+                userId: socket.user.userId,
+                isTyping: Boolean(isTyping),
+            });
+        });
+
+        socket.on("disconnect", () => {
+            for (const workspaceId of socket.data.workspaceIds || []) {
+                emitWorkspacePresence(workspaceId);
+            }
+        });
     });
 
     return io;
@@ -106,4 +126,11 @@ export const emitWorkspaceMessage = (workspaceId, message) => {
 
 export const emitWorkspaceActivity = (workspaceId, activity) => {
     io?.to(`workspace:${workspaceId}`).emit("activity:created", activity);
+};
+
+export const emitWorkspacePresence = (workspaceId) => {
+    const room = io?.sockets.adapter.rooms.get(`workspace:${workspaceId}`);
+    io?.to(`workspace:${workspaceId}`).emit("workspace:presence", {
+        onlineCount: room?.size || 0,
+    });
 };

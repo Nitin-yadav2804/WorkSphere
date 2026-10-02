@@ -15,7 +15,10 @@ function WorkspaceChat({ workspaceId }) {
   const [content, setContent] = useState("");
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [onlineCount, setOnlineCount] = useState(0);
+  const [someoneTyping, setSomeoneTyping] = useState(false);
   const endRef = useRef(null);
+  const typingTimeoutRef = useRef(null);
 
   useEffect(() => {
     let active = true;
@@ -41,15 +44,36 @@ function WorkspaceChat({ workspaceId }) {
           : [...current, message]
       );
     };
+    const handlePresence = ({ onlineCount: count }) => setOnlineCount(count || 0);
+    const handleTyping = ({ userId, isTyping }) => {
+      if (String(userId) !== String(currentUser?._id)) setSomeoneTyping(Boolean(isTyping));
+    };
 
     socket.emit("join:workspace", workspaceId);
     socket.on("chat:message", handleMessage);
+    socket.on("workspace:presence", handlePresence);
+    socket.on("chat:typing", handleTyping);
 
     return () => {
       active = false;
       socket.off("chat:message", handleMessage);
+      socket.off("workspace:presence", handlePresence);
+      socket.off("chat:typing", handleTyping);
+      clearTimeout(typingTimeoutRef.current);
     };
   }, [workspaceId]);
+
+  const handleTyping = (event) => {
+    setContent(event.target.value);
+    const socket = getSocket();
+    if (!socket?.connected) return;
+
+    socket.emit("chat:typing", { workspaceId, isTyping: true });
+    clearTimeout(typingTimeoutRef.current);
+    typingTimeoutRef.current = setTimeout(() => {
+      socket.emit("chat:typing", { workspaceId, isTyping: false });
+    }, 900);
+  };
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -90,7 +114,7 @@ function WorkspaceChat({ workspaceId }) {
         </div>
         <div>
           <h2 className="text-lg font-bold text-slate-900">Workspace chat</h2>
-          <p className="text-sm text-slate-500">Talk with everyone in this workspace.</p>
+          <p className="text-sm text-slate-500">{onlineCount} online · Talk with everyone in this workspace.</p>
         </div>
       </div>
 
@@ -108,11 +132,12 @@ function WorkspaceChat({ workspaceId }) {
               </div>
             </div>;
           })}
+          {someoneTyping && <p className="text-xs italic text-slate-400">Someone is typing...</p>}
           <div ref={endRef} />
         </div>
 
         <form onSubmit={handleSubmit} className="flex gap-3 border-t border-slate-200 bg-white p-4">
-          <input value={content} onChange={(event) => setContent(event.target.value)} maxLength={2000} placeholder="Write a message..." className="min-w-0 flex-1 rounded-xl border border-slate-200 px-4 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10" />
+          <input value={content} onChange={handleTyping} maxLength={2000} placeholder="Write a message..." className="min-w-0 flex-1 rounded-xl border border-slate-200 px-4 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10" />
           <button type="submit" disabled={sending || !content.trim()} className="flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"><Send size={16} />{sending ? "Sending..." : "Send"}</button>
         </form>
       </div>

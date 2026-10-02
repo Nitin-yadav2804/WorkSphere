@@ -146,6 +146,7 @@ The Settings page provides:
 - Socket.IO connection authenticated with the existing JWT
 - Live task comment create, edit, and delete events
 - Live workspace activity updates
+- Workspace online count and chat typing indicator
 - Workspace chat with persisted messages
 - Workspace membership checks before joining realtime rooms
 
