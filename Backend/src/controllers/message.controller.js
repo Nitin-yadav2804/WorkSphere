@@ -1,85 +1,29 @@
-import Message from "../models/message.model.js";
-import { requireWorkspaceAccess } from "../utils/workspaceAccess.js";
-import { emitWorkspaceMessage } from "../realtime/socket.js";
-import Project from "../models/project.model.js";
-import { emitProjectMessage } from "../realtime/socket.js";
-
-export const getWorkspaceMessages = async (req, res) => {
-    const { workspaceId } = req.params;
-
-    await requireWorkspaceAccess(workspaceId, req.user.userId, {
-        message: "Workspace not found or access denied",
-        statusCode: 404,
-    });
-
-    const messages = await Message.find({ workspace: workspaceId })
-        .populate("user", "name email")
-        .sort({ createdAt: -1 })
-        .limit(100);
-
-    res.status(200).json({
-        success: true,
-        messages: messages.reverse(),
-    });
+import Message from '../models/message.model.js';
+import { authorizeScope, messageFilter, populateMessage, sendMessage } from '../services/chat.js';
+const history = kind => async (req, res) => {
+  const id = req.params[`${kind}Id`];
+  await authorizeScope(kind, id, req.user.userId);
+  const filter = messageFilter(kind, id);
+  if (req.query.before && /^[a-f\d]{24}$/i.test(req.query.before)) filter._id = {
+    $lt: req.query.before
+  };
+  const messages = await populateMessage(Message.find(filter).sort({
+    _id: -1
+  }).limit(51));
+  const hasMore = messages.length > 50;
+  res.json({
+    success: true,
+    hasMore,
+    messages: messages.slice(0, 50).reverse()
+  });
 };
-
-export const createWorkspaceMessage = async (req, res) => {
-    const { workspaceId } = req.params;
-
-    await requireWorkspaceAccess(workspaceId, req.user.userId, {
-        message: "Workspace not found or access denied",
-        statusCode: 404,
-    });
-
-    const message = await Message.create({
-        content: req.body.content,
-        workspace: workspaceId,
-        user: req.user.userId,
-    });
-
-    await message.populate("user", "name email");
-    emitWorkspaceMessage(workspaceId, message);
-
-    res.status(201).json({
-        success: true,
-        message,
-    });
-};
-
-export const getProjectMessages = async (req, res) => {
-    const project = await Project.findById(req.params.projectId).select("workspace");
-    if (!project) return res.status(404).json({ success: false, message: "Project not found" });
-
-    await requireWorkspaceAccess(project.workspace, req.user.userId, {
-        message: "Project not found or access denied",
-        statusCode: 404,
-    });
-
-    const messages = await Message.find({ project: req.params.projectId })
-        .populate("user", "name email")
-        .sort({ createdAt: -1 })
-        .limit(100);
-
-    res.status(200).json({ success: true, messages: messages.reverse() });
-};
-
-export const createProjectMessage = async (req, res) => {
-    const project = await Project.findById(req.params.projectId).select("workspace");
-    if (!project) return res.status(404).json({ success: false, message: "Project not found" });
-
-    await requireWorkspaceAccess(project.workspace, req.user.userId, {
-        message: "Project not found or access denied",
-        statusCode: 404,
-    });
-
-    const message = await Message.create({
-        content: req.body.content,
-        workspace: project.workspace,
-        project: project._id,
-        user: req.user.userId,
-    });
-    await message.populate("user", "name email");
-    emitProjectMessage(project._id, message);
-
-    res.status(201).json({ success: true, message });
-};
+const create = kind => async (req, res) => res.status(201).json({
+  success: true,
+  message: await sendMessage(kind, req.params[`${kind}Id`], req.user.userId, req.body)
+});
+export const getWorkspaceMessages = history('workspace');
+export const createWorkspaceMessage = create('workspace');
+export const getProjectMessages = history('project');
+export const createProjectMessage = create('project');
+export const getConversationMessages = history('conversation');
+export const createConversationMessage = create('conversation');

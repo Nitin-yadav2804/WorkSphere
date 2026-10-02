@@ -1,3 +1,6 @@
+import Notifications from "../pages/Notifications";
+import Messages from "../pages/Messages";
+import Analytics from "../pages/Analytics";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 
 import Login from "../pages/Login";
@@ -56,6 +59,9 @@ function AppRoutes() {
               element={<TaskDetails />}
             />
             <Route path="/activity" element={<Activity />} />
+            <Route path="/notifications" element={<Notifications />} />
+            <Route path="/messages" element={<Messages />} />
+            <Route path="/analytics" element={<Analytics />} />
             <Route path="/settings" element={<Settings />} />
           </Route>
         </Route>

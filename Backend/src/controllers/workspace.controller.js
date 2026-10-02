@@ -1,3 +1,4 @@
+import { notify } from "../services/notifications.js";
 import { requireDocument } from "../utils/requireDocument.js";
 import { requireWorkspaceAccess } from "../utils/workspaceAccess.js";
 import User from "../models/user.model.js";
@@ -175,6 +176,8 @@ export const addMember = async (req, res) => {
 
     await workspace.save();
 
+    await createActivity({ action: 'member_added', description: `Added ${user.name} to workspace "${workspace.name}"`, user: req.user.userId, workspace: workspace._id });
+    await notify({ recipients: [user._id], actor: req.user.userId, type: 'workspace_invitation', text: `You were added to ${workspace.name}`, link: `/workspaces/${workspace._id}`, workspace: workspace._id });
     const addedMember = workspace.members[workspace.members.length - 1];
 
     res.status(201).json({

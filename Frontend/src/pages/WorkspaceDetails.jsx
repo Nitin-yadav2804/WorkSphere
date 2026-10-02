@@ -1,3 +1,6 @@
+import { getSocket, joinScope } from "../services/socket";
+import ProfileImage from "../components/ProfileImage";
+import { useSelector } from "react-redux";
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
@@ -53,6 +56,7 @@ import WorkspaceChat from "../components/WorkspaceChat";
 
 function WorkspaceDetails() {
   const { workspaceId } = useParams();
+  const viewer = useSelector(state => state.auth.user);
   const navigate = useNavigate();
 
   const [workspace, setWorkspace] = useState(null);
@@ -139,6 +143,16 @@ function WorkspaceDetails() {
     };
 
     loadFiles();
+  }, [workspaceId]);
+
+  useEffect(() => {
+    let active = true;
+    const socket = getSocket();
+    const refresh = async () => { try { const [w,p,f] = await Promise.all([getWorkspace(workspaceId), getWorkspaceProjects(workspaceId), getWorkspaceFiles(workspaceId)]); if (active) { setWorkspace(w.workspace); setProjects(p.projects.sort(byCreatedAtAscending)); setFiles(f.files); } } catch { /* Existing page requests show errors. */ } };
+    const changed = activity => { if (String(activity.workspace?._id || activity.workspace) === workspaceId) refresh(); };
+    const leave = joinScope('workspace', workspaceId);
+    socket?.on('activity:created', changed); socket?.on('connect', refresh);
+    return () => { active = false; leave(); socket?.off('activity:created', changed); socket?.off('connect', refresh); };
   }, [workspaceId]);
 
   const fetchMembers = async () => {
@@ -460,6 +474,8 @@ function WorkspaceDetails() {
             </div>
           </div>
         </div>
+
+        <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-6"><ProfileImage kind="workspace" id={workspaceId} name={workspace.name} editable={String(workspace.owner?._id || workspace.owner) === String(viewer?._id || viewer?.id)} /></div>
 
         <div className="relative mt-6 rounded-2xl border border-slate-200 bg-white shadow-sm">
           <div className="rounded-t-2xl border-b border-slate-200 px-6 pt-2 sm:px-8">

@@ -15,6 +15,11 @@ import messageRoutes from "./routes/message.routes.js";
 import connectDB from "./config/db.js";
 import { initializeSocket } from "./realtime/socket.js";
 
+import collaborationRoutes from "./routes/collaboration.routes.js";
+
+import imagesRoutes from "./routes/images.routes.js";
+import analyticsRoutes from "./routes/analytics.routes.js";
+
 const PORT = process.env.PORT || 3000;
 const app = express();
 
@@ -41,6 +46,9 @@ app.use("/api", commentRoutes);
 app.use("/api", activityRoutes);
 app.use("/api/files", fileRoutes);
 app.use("/api", messageRoutes);
+app.use("/api", collaborationRoutes);
+app.use("/api/images", imagesRoutes);
+app.use("/api", analyticsRoutes);
 
 app.get("/", (req, res) => {
   res.status(200).json({

@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 
 const userSchema = new mongoose.Schema(
     {
+        avatarKey: String,
         name: {
             type: String,
             required: true,

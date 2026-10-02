@@ -1,3 +1,6 @@
+import ProfileImage from "../components/ProfileImage";
+import useNotifications from "../hooks/useNotifications";
+import { Bell, MessageCircle, BarChart3 } from "lucide-react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 
 import { useDispatch, useSelector } from "react-redux";
@@ -13,6 +16,7 @@ import {
 import { logout } from "../store/authSlice";
 
 function DashboardLayout() {
+  const unread = useNotifications();
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
@@ -24,6 +28,9 @@ function DashboardLayout() {
   };
 
   const navItems = [
+    { name: `Notifications${unread ? ` (${unread})` : ""}`, path: "/notifications", icon: Bell },
+    { name: "Messages", path: "/messages", icon: MessageCircle },
+    { name: "Analytics", path: "/analytics", icon: BarChart3 },
     {
       name: "Dashboard",
       path: "/dashboard",
@@ -98,9 +105,7 @@ function DashboardLayout() {
         {/* User section */}
         <div className="border-t border-slate-100 p-4">
           <div className="mb-3 flex items-center gap-3 rounded-xl bg-slate-50 p-3">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-100 text-sm font-bold text-blue-600">
-              {user?.name?.charAt(0).toUpperCase() || "U"}
-            </div>
+            <ProfileImage id={user?._id || user?.id} name={user?.name} size="h-9 w-9" />
 
             <div className="min-w-0">
               <p className="truncate text-sm font-semibold text-slate-900">

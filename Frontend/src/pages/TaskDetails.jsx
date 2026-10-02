@@ -1,3 +1,4 @@
+import { getSocket, joinScope } from "../services/socket";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
@@ -108,6 +109,19 @@ function TaskDetails() {
     };
 
     fetchTaskDetails();
+  }, [taskId]);
+
+  useEffect(() => {
+    let active = true;
+    const socket = getSocket();
+    const update = value => { if (String(value._id) === taskId) setTask(current => current ? { ...current, ...value, project: current.project } : current); };
+    const refresh = () => getTask(taskId).then(data => { if (active) update(data.task); }).catch(() => {});
+    const deleted = value => { if (String(value._id) === taskId) { setError('This task was deleted.'); setShowEditModal(false); } };
+    const revoked = value => { if (value.room === `task:${taskId}`) setError('This task is no longer available.'); };
+    socket?.on('scope:revoked', revoked);
+    const leave = joinScope('task', taskId);
+    socket?.on('task:updated', update); socket?.on('task:deleted', deleted); socket?.on('connect', refresh);
+    return () => { active = false; leave(); socket?.off('scope:revoked', revoked); socket?.off('task:updated', update); socket?.off('task:deleted', deleted); socket?.off('connect', refresh); };
   }, [taskId]);
 
   const getProjectId = () => {
@@ -429,7 +443,7 @@ function TaskDetails() {
           </div>
         </div>
 
-        <TaskComments taskId={taskId} />
+        <TaskComments workspaceId={getWorkspaceId()} taskId={taskId} />
 
         {showEditModal && (
           <EditTaskModal

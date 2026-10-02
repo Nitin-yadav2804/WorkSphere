@@ -1,3 +1,4 @@
+import createActivity from "../../utils/createActivity.js";
 import Project from "../../models/project.model.js";
 import Task from "../../models/task.model.js";
 import deleteProjectCascade from "../../utils/deleteProjectCascade.js";
@@ -65,6 +66,7 @@ export const deleteProject = async (req, res) => {
     }
 
     await deleteProjectCascade(projectId);
+    await createActivity({ action: 'project_deleted', description: `Administrator deleted project "${project.name}"`, user: req.user.userId, workspace: project.workspace });
 
     res.status(200).json({
         success: true,

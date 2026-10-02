@@ -1,3 +1,5 @@
+import Message from "../models/message.model.js";
+import { deleteFiles } from "./deleteFiles.js";
 import Project from "../models/project.model.js";
 import Task from "../models/task.model.js";
 import deleteTaskCascade from "./deleteTaskCascade.js";
@@ -11,6 +13,8 @@ const deleteProjectCascade = async (projectId) => {
         await deleteTaskCascade(task._id);
     }
 
+    await deleteFiles({ project: projectId });
+    await Message.deleteMany({ project: projectId });
     await Project.findByIdAndDelete(projectId);
 };
 

@@ -1,3 +1,4 @@
+import { notifyMentions } from "../services/notifications.js";
 import { requireDocument } from "../utils/requireDocument.js";
 import { requireWorkspaceAccess } from "../utils/workspaceAccess.js";
 import Comment from "../models/comment.model.js";
@@ -48,6 +49,7 @@ export const createComment = async (req, res) => {
         task: task._id,
     });
 
+    await notifyMentions(content, workspace._id, req.user.userId, `/tasks/${taskId}`);
     res.status(201).json({
         success: true,
         message: "Comment added successfully",
@@ -101,6 +103,10 @@ export const updateComment = async (req, res) => {
         throw new AppError("You can only edit your own comments", 403);
     }
 
+    const accessTask = await requireDocument(Task.findById(comment.task), 'Task not found', 404);
+    const accessProject = await requireDocument(Project.findById(accessTask.project), 'Project not found', 404);
+    await requireWorkspaceAccess(accessProject.workspace, req.user.userId, { message: 'Task access denied', statusCode: 403 });
+    await notifyMentions(content, accessProject.workspace, req.user.userId, `/tasks/${comment.task}`);
     comment.content = content;
 
     await comment.save();
@@ -159,6 +165,7 @@ export const deleteComment = async (req, res) => {
         404
     );
 
+    await requireWorkspaceAccess(workspace._id, req.user.userId, { message: "Task access denied", statusCode: 403 });
     await Comment.findByIdAndDelete(commentId);
     emitTaskComment(task._id, "deleted", { _id: commentId });
 

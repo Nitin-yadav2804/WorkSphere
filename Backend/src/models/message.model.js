@@ -4,7 +4,7 @@ const messageSchema = new mongoose.Schema(
     {
         content: {
             type: String,
-            required: true,
+            default: "",
             trim: true,
             maxlength: 2000,
         },
@@ -19,6 +19,9 @@ const messageSchema = new mongoose.Schema(
             ref: "Project",
             index: true,
         },
+        conversation: { type: mongoose.Schema.Types.ObjectId, ref: "Conversation", index: true },
+        attachments: [{ type: mongoose.Schema.Types.ObjectId, ref: "File" }],
+        readBy: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
         user: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "User",
@@ -27,6 +30,10 @@ const messageSchema = new mongoose.Schema(
     },
     { timestamps: true }
 );
+
+messageSchema.index({ workspace: 1, project: 1, conversation: 1, _id: -1 });
+messageSchema.index({ project: 1, _id: -1 });
+messageSchema.index({ conversation: 1, _id: -1 });
 
 const Message = mongoose.model("Message", messageSchema);
 

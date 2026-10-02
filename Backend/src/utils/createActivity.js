@@ -1,3 +1,4 @@
+import { notifyActivity } from "../services/notifications.js";
 import Activity from "../models/activity.model.js";
 import { emitWorkspaceActivity } from "../realtime/socket.js";
 
@@ -26,6 +27,7 @@ const createActivity = async ({
         emitWorkspaceActivity(workspace, activity);
     }
 
+    await notifyActivity(activity).catch(error => console.error("Activity notification failed", error.message));
     return activity;
 };
 

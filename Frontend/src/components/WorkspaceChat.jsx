@@ -1,160 +1,251 @@
-import { useEffect, useRef, useState } from "react";
-import { MessageCircle, Send } from "lucide-react";
-import { toast } from "sonner";
-import { useSelector } from "react-redux";
-
-import LoadingState from "./ui/LoadingState.jsx";
-import { getErrorMessage } from "../utils/errors.js";
-import {
-  getWorkspaceMessages,
-  createWorkspaceMessage,
-  getProjectMessages,
-  createProjectMessage,
-} from "../services/messageService.js";
-import { getSocket } from "../services/socket.js";
-import { formatCommentDate } from "../utils/dates.js";
-
-function WorkspaceChat({ workspaceId, projectId }) {
-  const isProjectChat = Boolean(projectId);
-  const scopeId = projectId || workspaceId;
-  const currentUser = useSelector((state) => state.auth.user);
-  const [messages, setMessages] = useState([]);
-  const [content, setContent] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [sending, setSending] = useState(false);
-  const [onlineCount, setOnlineCount] = useState(0);
-  const [someoneTyping, setSomeoneTyping] = useState(false);
-  const endRef = useRef(null);
-  const typingTimeoutRef = useRef(null);
-
+import { useEffect, useRef, useState } from 'react';
+import { MessageCircle, Send, Paperclip, X } from 'lucide-react';
+import { toast } from 'sonner';
+import { useSelector } from 'react-redux';
+import api from '../services/api';
+import { getSocket, joinScope } from '../services/socket';
+import { uploadFile } from '../services/fileService';
+import { getErrorMessage } from '../utils/errors';
+import { formatCommentDate } from '../utils/dates';
+import LoadingState from './ui/LoadingState';
+import FileList from './files/FileList';
+import MentionPicker from './MentionPicker';
+const merge = (a, b) => [...new Map([...a, ...b].map(item => [item._id, item])).values()].sort((a, b) => a._id.localeCompare(b._id));
+function ChatSession({
+  workspaceId,
+  projectId,
+  conversationId,
+  participants
+}) {
+  const kind = conversationId ? 'conversation' : projectId ? 'project' : 'workspace';
+  const id = conversationId || projectId || workspaceId;
+  const room = `${kind}:${id}`;
+  const endpoint = `/${kind}s/${id}/messages`;
+  const user = useSelector(state => state.auth.user);
+  const userId = String(user?._id || user?.id || '');
+  const [messages, setMessages] = useState([]),
+    [content, setContent] = useState('');
+  const [loading, setLoading] = useState(true),
+    [sending, setSending] = useState(false),
+    [uploading, setUploading] = useState(false);
+  const [hasMore, setHasMore] = useState(false),
+    [olderBusy, setOlderBusy] = useState(false),
+    [error, setError] = useState('');
+  const [attachments, setAttachments] = useState([]),
+    [online, setOnline] = useState([]),
+    [typers, setTypers] = useState({});
+  const [visible, setVisible] = useState(document.visibilityState === 'visible');
+  const panel = useRef(null),
+    typingTimer = useRef(),
+    generation = useRef(0);
   useEffect(() => {
+    const change = () => setVisible(document.visibilityState === 'visible' && document.hasFocus());
+    document.addEventListener('visibilitychange', change);
+    window.addEventListener('focus', change);
+    window.addEventListener('blur', change);
+    return () => {
+      document.removeEventListener('visibilitychange', change);
+      window.removeEventListener('focus', change);
+      window.removeEventListener('blur', change);
+    };
+  }, []);
+  useEffect(() => {
+    const serial = ++generation.current;
     let active = true;
-    const loadMessages = async () => {
+    const socket = getSocket();
+    const refresh = async () => {
       try {
-        const response = isProjectChat
-          ? await getProjectMessages(projectId)
-          : await getWorkspaceMessages(workspaceId);
-        if (active) setMessages(response.messages || []);
-      } catch (error) {
-        toast.error(getErrorMessage(error, "Failed to load chat."));
+        const {
+          data
+        } = await api.get(endpoint);
+        if (active) {
+          setMessages(current => merge(current, data.messages));
+          setHasMore(data.hasMore);
+          setError('');
+        }
+      } catch (e) {
+        if (active) setError(getErrorMessage(e, 'Failed to load chat'));
       } finally {
         if (active) setLoading(false);
       }
     };
-    loadMessages();
-
-    const socket = getSocket();
-    if (!socket) return () => { active = false; };
-
-    const handleMessage = (message) => {
-      setMessages((current) =>
-        current.some((item) => item._id === message._id)
-          ? current
-          : [...current, message]
-      );
+    const onMessage = message => {
+      const match = kind === 'conversation' ? String(message.conversation) === String(id) : kind === 'project' ? String(message.project) === String(id) && !message.conversation : String(message.workspace) === String(id) && !message.project && !message.conversation;
+      if (match && active) setMessages(current => merge(current, [message]));
     };
-    const handlePresence = ({ onlineCount: count }) => setOnlineCount(count || 0);
-    const handleTyping = ({ userId, isTyping }) => {
-      if (String(userId) !== String(currentUser?._id)) setSomeoneTyping(Boolean(isTyping));
+    const onPresence = data => {
+      if (data.room === room) setOnline(data.users);
     };
-
-    socket.emit(isProjectChat ? "join:project" : "join:workspace", scopeId);
-    socket.on("chat:message", handleMessage);
-    socket.on("workspace:presence", handlePresence);
-    socket.on("chat:typing", handleTyping);
-
+    const onTyping = data => {
+      if (data.room === room && String(data.userId) !== userId) setTypers(current => ({
+        ...current,
+        [data.userId]: data.isTyping ? {
+          name: data.name,
+          until: Date.now() + 2500
+        } : null
+      }));
+    };
+    const onRead = data => {
+      if (data.room === room) setMessages(current => current.map(m => data.ids.includes(m._id) ? {
+        ...m,
+        readBy: [...new Set([...(m.readBy || []).map(String), String(data.userId)])]
+      } : m));
+    };
+    const onRevoked = data => {
+      if (data.room === room) {
+        setMessages([]);
+        setError('You no longer have access to this chat.');
+      }
+    };
+    socket?.on('chat:message', onMessage);
+    socket?.on('chat:presence', onPresence);
+    socket?.on('chat:typing', onTyping);
+    socket?.on('chat:read', onRead);
+    socket?.on('scope:revoked', onRevoked);
+    socket?.on('connect', refresh);
+    const leave = joinScope(kind, id);
+    refresh();
+    const interval = setInterval(() => setTypers(current => Object.fromEntries(Object.entries(current).filter(([, value]) => value && value.until > Date.now()))), 1000);
     return () => {
       active = false;
-      socket.off("chat:message", handleMessage);
-      socket.off("workspace:presence", handlePresence);
-      socket.off("chat:typing", handleTyping);
-      clearTimeout(typingTimeoutRef.current);
+      generation.current = serial + 1;
+      clearInterval(interval);
+      clearTimeout(typingTimer.current);
+      socket?.emit('chat:typing', {
+        kind,
+        id,
+        isTyping: false
+      });
+      leave();
+      socket?.off('connect', refresh);
+      socket?.off('chat:message', onMessage);
+      socket?.off('chat:presence', onPresence);
+      socket?.off('chat:typing', onTyping);
+      socket?.off('chat:read', onRead);
+      socket?.off('scope:revoked', onRevoked);
     };
-  }, [workspaceId, projectId, isProjectChat, scopeId]);
-
-  const handleTyping = (event) => {
-    setContent(event.target.value);
-    const socket = getSocket();
-    if (!socket?.connected) return;
-
-    if (isProjectChat) return;
-    socket.emit("chat:typing", { workspaceId, isTyping: true });
-    clearTimeout(typingTimeoutRef.current);
-    typingTimeoutRef.current = setTimeout(() => {
-      socket.emit("chat:typing", { workspaceId, isTyping: false });
-    }, 900);
-  };
-
+  }, [endpoint, id, kind, room, userId]);
   useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
-
-  const handleSubmit = async (event) => {
-    event.preventDefault();
-    const trimmed = content.trim();
-    if (!trimmed) return;
-
+    const unread = messages.filter(m => String(m.user?._id) !== userId && !(m.readBy || []).map(String).includes(userId)).map(m => m._id);
+    if (!visible || !unread.length) return;
+    const serial = generation.current;
+    api.post(`/chat/${kind}/${id}/read`, {
+      ids: unread.slice(-100)
+    }).then(() => {
+      if (serial === generation.current) setMessages(current => current.map(m => unread.slice(-100).includes(m._id) ? {
+        ...m,
+        readBy: [...new Set([...(m.readBy || []).map(String), userId])]
+      } : m));
+    }).catch(() => {});
+  }, [messages, visible, kind, id, userId]);
+  const latestId = messages.at(-1)?._id;
+  useEffect(() => {
+    if (panel.current) panel.current.scrollTop = panel.current.scrollHeight;
+  }, [latestId]);
+  const type = value => {
+    setContent(value);
+    const socket = getSocket();
+    socket?.emit('chat:typing', {
+      kind,
+      id,
+      isTyping: Boolean(value.trim())
+    });
+    clearTimeout(typingTimer.current);
+    typingTimer.current = setTimeout(() => socket?.emit('chat:typing', {
+      kind,
+      id,
+      isTyping: false
+    }), 900);
+  };
+  const send = async e => {
+    e.preventDefault();
+    if (sending || !content.trim() && !attachments.length) return;
+    const serial = generation.current;
     setSending(true);
     try {
-      const socket = getSocket();
-      if (socket?.connected) {
-        await new Promise((resolve, reject) => {
-          socket.emit("chat:send", { workspaceId, projectId, content: trimmed }, (result) => {
-            if (result?.success) resolve(result);
-            else reject(new Error(result?.message || "Failed to send message."));
-          });
+      const {
+        data
+      } = await api.post(endpoint, {
+        content: content.trim(),
+        attachments: attachments.map(f => f._id)
+      });
+      if (serial === generation.current) {
+        setMessages(current => merge(current, [data.message]));
+        setContent('');
+        setAttachments([]);
+        getSocket()?.emit('chat:typing', {
+          kind,
+          id,
+          isTyping: false
         });
-      } else {
-        const response = isProjectChat
-          ? await createProjectMessage(projectId, trimmed)
-          : await createWorkspaceMessage(workspaceId, trimmed);
-        setMessages((current) => current.some((item) => item._id === response.message._id) ? current : [...current, response.message]);
       }
-      setContent("");
-    } catch (error) {
-      toast.error(getErrorMessage(error, "Failed to send message."));
+    } catch (e) {
+      toast.error(getErrorMessage(e, 'Failed to send message'));
     } finally {
       setSending(false);
     }
   };
-
-  return (
-    <div className="p-6 sm:p-8">
-      <div className="mb-5 flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
-          <MessageCircle size={19} />
-        </div>
-        <div>
-          <h2 className="text-lg font-bold text-slate-900">{isProjectChat ? "Project chat" : "Workspace chat"}</h2>
-          <p className="text-sm text-slate-500">{isProjectChat ? "Discuss this project with your team." : `${onlineCount} online · Talk with everyone in this workspace.`}</p>
-        </div>
+  const attach = async e => {
+    const file = e.target.files[0];
+    e.target.value = '';
+    if (!file) return;
+    const serial = generation.current;
+    setUploading(true);
+    try {
+      const data = await uploadFile({
+        workspaceId,
+        projectId,
+        file
+      });
+      if (serial === generation.current) setAttachments(current => [...current, data.file].slice(0, 5));
+    } catch (e) {
+      toast.error(getErrorMessage(e, 'Upload failed'));
+    } finally {
+      setUploading(false);
+    }
+  };
+  const older = async () => {
+    const serial = generation.current;
+    setOlderBusy(true);
+    try {
+      const {
+        data
+      } = await api.get(endpoint, {
+        params: {
+          before: messages[0]?._id
+        }
+      });
+      if (serial === generation.current) {
+        setMessages(current => merge(data.messages, current));
+        setHasMore(data.hasMore);
+      }
+    } catch (e) {
+      toast.error(getErrorMessage(e, 'Could not load older messages'));
+    } finally {
+      setOlderBusy(false);
+    }
+  };
+  return <div className="p-6 sm:p-8">
+    <div className="mb-5 flex items-center gap-3"><MessageCircle className="text-blue-600" /><div><h2 className="text-lg font-bold text-slate-900">{kind === 'project' ? 'Project chat' : kind === 'conversation' ? 'Direct message' : 'Workspace chat'}</h2><p className="text-sm text-slate-500">{online.length} online · {online.map(u => u.name).join(', ') || 'Connect with your team'}</p></div></div>
+    <div className="rounded-2xl border border-slate-200 bg-slate-50">
+      <div ref={panel} className="h-[28rem] space-y-4 overflow-y-auto p-5">
+        {hasMore && <button disabled={olderBusy} onClick={older} className="text-sm text-blue-600">{olderBusy ? 'Loading...' : 'Load older messages'}</button>}
+        {loading ? <LoadingState>Loading chat...</LoadingState> : error ? <p role="alert" className="text-red-600">{error}</p> : !messages.length ? <p className="py-16 text-center text-sm text-slate-500">No messages yet. Start the conversation.</p> : messages.map(m => {
+          const own = String(m.user?._id) === userId;
+          const readCount = (m.readBy || []).filter(id => String(id) !== String(m.user?._id)).length;
+          return <div key={m._id} className={`flex ${own ? 'justify-end' : ''}`}><div className={`max-w-[85%] rounded-2xl p-4 ${own ? 'bg-blue-600 text-white' : 'bg-white text-slate-700 shadow-sm'}`}><p className="mb-1 text-xs font-semibold">{own ? 'You' : m.user?.name || 'Former member'}</p><p className="whitespace-pre-wrap break-words text-sm">{m.content}</p>{m.attachments?.length > 0 && <div className="mt-3 rounded-xl bg-white p-2"><FileList files={m.attachments.filter(Boolean)} /></div>}<p className="mt-2 text-xs opacity-70">{formatCommentDate(m.createdAt)}{own && ` · ${readCount ? `Read by ${readCount}` : 'Sent'}`}</p></div></div>;
+        })}
       </div>
-
-      <div className="flex h-[28rem] flex-col rounded-2xl border border-slate-200 bg-slate-50">
-        <div className="flex-1 space-y-4 overflow-y-auto p-5">
-          {loading ? <LoadingState as="p" className="text-sm text-slate-500">Loading chat...</LoadingState> : messages.length === 0 ? (
-            <div className="py-16 text-center text-sm text-slate-500">No messages yet. Start the conversation.</div>
-          ) : messages.map((message) => {
-            const own = String(message.user?._id) === String(currentUser?._id);
-            return <div key={message._id} className={`flex ${own ? "justify-end" : "justify-start"}`}>
-              <div className={`max-w-[80%] rounded-2xl px-4 py-3 ${own ? "bg-blue-600 text-white" : "bg-white text-slate-700 shadow-sm"}`}>
-                <p className={`mb-1 text-xs font-semibold ${own ? "text-blue-100" : "text-slate-500"}`}>{own ? "You" : message.user?.name || "Workspace member"}</p>
-                <p className="whitespace-pre-wrap text-sm leading-5">{message.content}</p>
-                <p className={`mt-1 text-[10px] ${own ? "text-blue-100" : "text-slate-400"}`}>{formatCommentDate(message.createdAt)}</p>
-              </div>
-            </div>;
-          })}
-          {someoneTyping && <p className="text-xs italic text-slate-400">Someone is typing...</p>}
-          <div ref={endRef} />
-        </div>
-
-        <form onSubmit={handleSubmit} className="flex gap-3 border-t border-slate-200 bg-white p-4">
-          <input value={content} onChange={handleTyping} maxLength={2000} placeholder="Write a message..." className="min-w-0 flex-1 rounded-xl border border-slate-200 px-4 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10" />
-          <button type="submit" disabled={sending || !content.trim()} className="flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"><Send size={16} />{sending ? "Sending..." : "Send"}</button>
-        </form>
-      </div>
+      <p aria-live="polite" className="min-h-6 px-5 text-xs italic text-slate-500">{Object.values(typers).filter(Boolean).map(v => v.name).join(', ')}{Object.values(typers).some(Boolean) ? ' typing...' : ''}</p>
+      <form onSubmit={send} className="space-y-3 border-t border-slate-200 bg-white p-4">
+        <div className="flex flex-wrap gap-2">{attachments.map(f => <button key={f._id} type="button" onClick={() => setAttachments(current => current.filter(a => a._id !== f._id))} className="flex items-center gap-1 rounded-lg bg-blue-50 p-2 text-xs">{f.originalName}<X size={12} /></button>)}</div>
+        <div className="flex gap-3"><input aria-label="Message" value={content} onChange={e => type(e.target.value)} maxLength={2000} placeholder="Write a message..." className="min-w-0 flex-1 rounded-xl border border-slate-200 px-4 py-3 text-sm" /><button disabled={sending || uploading || Boolean(error) || !content.trim() && !attachments.length} className="flex items-center gap-2 rounded-xl bg-blue-600 px-4 text-white disabled:opacity-50"><Send size={16} />{sending ? 'Sending...' : 'Send'}</button></div>
+        <div className="flex flex-wrap items-center gap-3"><MentionPicker workspaceId={workspaceId} participants={participants} onSelect={value => type(content + value)} /><label className="flex cursor-pointer items-center gap-2 text-xs text-blue-600"><Paperclip size={15} />{uploading ? 'Uploading...' : 'Attach file'}<input type="file" className="sr-only" onChange={attach} disabled={uploading || attachments.length >= 5} /></label><span className="text-xs text-slate-400">Attachments are shared in workspace files.</span></div>
+      </form>
     </div>
-  );
+  </div>;
 }
-
-export default WorkspaceChat;
+export default function WorkspaceChat(props) {
+  const user = useSelector(state => state.auth.user);
+  return <ChatSession key={`${props.workspaceId}:${props.projectId}:${props.conversationId}:${user?._id || user?.id}`} {...props} />;
+}

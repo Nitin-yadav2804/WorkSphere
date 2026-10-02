@@ -1,3 +1,4 @@
+import ProfileImage from "../components/ProfileImage";
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { useDispatch, useSelector } from "react-redux";
@@ -92,6 +93,7 @@ function Settings() {
         </div>
 
         <div className="space-y-6">
+          <div className="rounded-2xl border border-slate-200 bg-white p-6"><ProfileImage id={currentUser?._id || currentUser?.id} name={currentUser?.name} editable /></div>
           <section className="rounded-2xl border border-slate-200 bg-white shadow-sm">
             <div className="border-b border-slate-100 px-6 py-5 sm:px-8">
               <div className="flex items-center gap-3">

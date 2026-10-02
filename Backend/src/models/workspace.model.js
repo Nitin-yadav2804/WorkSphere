@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 
 const workspaceSchema = new mongoose.Schema(
     {
+        logoKey: String,
         name: {
             type: String,
             required: true,

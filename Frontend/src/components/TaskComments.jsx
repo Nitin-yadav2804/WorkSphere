@@ -1,3 +1,4 @@
+import MentionPicker from "./MentionPicker";
 import { useEffect, useState } from "react";
 import { useSelector } from "react-redux";
 import { MessageSquare, Send, Trash2, Pencil, X, Check } from "lucide-react";
@@ -12,9 +13,9 @@ import {
   updateComment,
   deleteComment,
 } from "../services/commentService";
-import { getSocket } from "../services/socket.js";
+import { getSocket, joinScope } from "../services/socket.js";
 
-function TaskComments({ taskId }) {
+function TaskComments({ taskId, workspaceId }) {
   const [comments, setComments] = useState([]);
   const [content, setContent] = useState("");
   const [loading, setLoading] = useState(true);
@@ -27,28 +28,30 @@ function TaskComments({ taskId }) {
   const currentUser = useSelector((state) => state.auth.user);
 
   useEffect(() => {
+    let active = true;
     const fetchComments = async () => {
       try {
         setLoading(true);
 
         const response = await getTaskComments(taskId);
 
-        setComments(response.comments || []);
+        if (active) setComments(response.comments || []);
       } catch (error) {
         console.error("Failed to fetch comments:", getErrorDetails(error));
 
         toast.error(getErrorMessage(error, "Failed to load comments."));
       } finally {
-        setLoading(false);
+        if (active) setLoading(false);
       }
     };
 
     fetchComments();
 
     const socket = getSocket();
-    if (!socket) return undefined;
+    if (!socket) return () => { active = false; };
 
     const upsertComment = (comment) => {
+      if (String(comment.task) !== String(taskId)) return;
       setComments((current) => {
         const existing = current.findIndex((item) => item._id === comment._id);
         if (existing === -1) return [...current, comment];
@@ -57,12 +60,16 @@ function TaskComments({ taskId }) {
     };
     const removeComment = ({ _id }) => setComments((current) => current.filter((item) => item._id !== _id));
 
-    socket.emit("join:task", taskId);
+    const leaveScope = joinScope("task", taskId);
+    socket.on("connect", fetchComments);
     socket.on("comment:created", upsertComment);
     socket.on("comment:updated", upsertComment);
     socket.on("comment:deleted", removeComment);
 
     return () => {
+      active = false;
+      socket.off("connect", fetchComments);
+      leaveScope();
       socket.off("comment:created", upsertComment);
       socket.off("comment:updated", upsertComment);
       socket.off("comment:deleted", removeComment);
@@ -177,7 +184,7 @@ function TaskComments({ taskId }) {
   };
 
   const isCommentOwner = (comment) => {
-    return String(comment?.user?._id) === String(currentUser?._id);
+    return String(comment?.user?._id) === String(currentUser?._id || currentUser?.id);
   };
 
   return (
@@ -214,6 +221,7 @@ function TaskComments({ taskId }) {
             className="w-full resize-none rounded-xl border border-slate-200 px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
           />
 
+          <div className="mt-3"><MentionPicker workspaceId={workspaceId} onSelect={value => setContent(current => current + value)} /></div>
           <div className="mt-3 flex justify-end">
             <button
               type="submit"
@@ -303,6 +311,7 @@ function TaskComments({ taskId }) {
                         className="w-full resize-none rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
                       />
 
+                      <MentionPicker workspaceId={workspaceId} onSelect={value => setEditingContent(current => current + value)} />
                       <div className="mt-2 flex justify-end gap-2">
                         <button
                           type="button"

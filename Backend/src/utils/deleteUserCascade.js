@@ -1,3 +1,9 @@
+import User from "../models/user.model.js";
+import Notification from "../models/notification.model.js";
+import Conversation from "../models/conversation.model.js";
+import Message from "../models/message.model.js";
+import { deleteFiles } from "./deleteFiles.js";
+import { deleteFromStorage } from "./storage.service.js";
 import Workspace from "../models/workspace.model.js";
 import Task from "../models/task.model.js";
 import deleteWorkspaceCascade from "./deleteWorkspaceCascade.js";
@@ -6,6 +12,13 @@ import Comment from "../models/comment.model.js";
 import Activity from "../models/activity.model.js";
 
 const deleteUserCascade = async (userId) => {
+    const user = await User.findById(userId).select('avatarKey');
+    if (user?.avatarKey) await deleteFromStorage(user.avatarKey);
+    await deleteFiles({ uploadedBy: userId });
+    await Notification.deleteMany({ recipient: userId });
+    const conversations = await Conversation.find({ participants: userId }).select('_id');
+    await Message.deleteMany({ conversation: { $in: conversations.map(c => c._id) } });
+    await Conversation.deleteMany({ participants: userId });
     const ownedWorkspaces = await Workspace.find({
         owner: userId,
     }).select("_id");

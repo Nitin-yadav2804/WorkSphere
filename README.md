@@ -149,6 +149,14 @@ The Settings page provides:
 - Workspace online count and chat typing indicator
 - Live project task creation, editing, and deletion updates
 - Workspace chat with persisted messages
+- Direct messages between workspace members
+- Paginated conversation history and message read receipts
+- Chat attachments and member mentions
+- Notification inbox with unread counts, filters and live delivery
+- Profile pictures and workspace logos
+- Task search, filters, sorting and Kanban drag-and-drop
+- Workspace analytics with creation-date filters and team workload breakdowns
+- Project Tasks, Files and Chat tabs
 - Project chat with persisted messages
 - Workspace membership checks before joining realtime rooms
 
@@ -386,19 +394,33 @@ DELETE /comments/:commentId
 ### Files
 
 ```text
-GET    /files
-POST   /files
-GET    /files/:fileId
+POST   /files/upload
+GET    /files/workspace/:workspaceId
+GET    /files/project/:projectId
+GET    /files/task/:taskId
+GET    /files/:fileId/access
+GET    /files/:fileId/download
 DELETE /files/:fileId
 ```
 
-### Workspace Chat
+### Chat and Collaboration
 
 ```text
 GET    /workspaces/:workspaceId/messages
 POST   /workspaces/:workspaceId/messages
 GET    /projects/:projectId/messages
 POST   /projects/:projectId/messages
+GET    /conversations
+POST   /conversations
+GET    /conversations/:conversationId/messages
+POST   /conversations/:conversationId/messages
+POST   /chat/:kind/:id/read
+GET    /notifications
+PATCH  /notifications/read
+GET    /workspaces/:workspaceId/analytics
+GET    /images/:kind/:id/image
+POST   /images/:kind/:id/image
+DELETE /images/:kind/:id/image
 ```
 
 Socket.IO clients authenticate with the same JWT and join authorized `workspace:<workspaceId>` or `task:<taskId>` rooms. Chat messages and comment changes are persisted through the REST API and broadcast to connected members.
@@ -531,6 +553,9 @@ The current application includes:
 /tasks/:taskId
 /settings
 /activity
+/notifications
+/messages
+/analytics
 /admin/users
 /admin/workspaces
 /admin/projects
@@ -720,3 +745,13 @@ MongoDB Atlas
 GitHub:
 
 https://github.com/Nitin-yadav2804/WorkSphere
+
+## Collaboration details
+
+Workspace, project and direct chats reuse one chat component. History loads in pages of 50 messages. Attachments use the existing file provider and are visible in workspace files. Direct-message text is limited to participants who remain workspace members. Mentions use `@email` handles selected from workspace members. Member additions grant access immediately and create an in-app notification; email invitations are a future feature.
+
+Profile pictures and workspace logos accept PNG, JPEG and WebP images up to 2 MB. Only the workspace owner can change its logo. Existing R2 configuration and storage-provider code remain unchanged.
+
+Analytics date filters use task creation dates in UTC. Completion and overdue metrics reflect current task state. Task boards support dragging and a status selector for keyboard/touch use.
+
+New collections (`notifications` and `conversations`) and optional fields are created through Mongoose; existing workspace messages remain readable. Realtime rooms currently run in one backend process; multiple instances require an adapter as a later infrastructure task.

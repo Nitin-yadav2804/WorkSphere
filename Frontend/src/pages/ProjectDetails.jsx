@@ -1,3 +1,4 @@
+import TaskBoard from "../components/TaskBoard";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
@@ -9,9 +10,6 @@ import {
   AlertTriangle,
   X,
   CheckSquare,
-  User,
-  Flag,
-  MoreVertical,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -21,10 +19,6 @@ import { formatProjectDate as formatDate } from "../utils/dates.js";
 import {
   getProjectStatusClasses as getProjectStatusBadgeClasses,
   getProjectStatusLabel,
-  getTaskStatusClasses,
-  getTaskStatusLabel,
-  getPriorityClasses as getTaskPriorityClasses,
-  getPriorityLabel as getTaskPriorityLabel,
 } from "../utils/presentation.js";
 import PageLoading from "../components/ui/PageLoading.jsx";
 import ModalFrame from "../components/ui/ModalFrame.jsx";
@@ -38,12 +32,13 @@ import EditTaskModal from "../components/EditTaskModal";
 import FileUpload from "../components/files/FileUpload";
 import FileList from "../components/files/FileList";
 import WorkspaceChat from "../components/WorkspaceChat";
-import { getSocket } from "../services/socket.js";
+import { getSocket, joinScope } from "../services/socket.js";
 
 function ProjectDetails() {
   const { projectId } = useParams();
   const navigate = useNavigate();
 
+  const [activeTab, setActiveTab] = useState("tasks");
   const [project, setProject] = useState(null);
   const [tasks, setTasks] = useState([]);
   const [files, setFiles] = useState([]);
@@ -59,9 +54,7 @@ function ProjectDetails() {
 
   const [deletingProject, setDeletingProject] = useState(false);
 
-  const [openTaskMenu, setOpenTaskMenu] = useState(null);
 
-  const [taskMenuPosition, setTaskMenuPosition] = useState(null);
 
   const [showEditTaskModal, setShowEditTaskModal] = useState(false);
 
@@ -107,28 +100,38 @@ function ProjectDetails() {
     if (!socket) return undefined;
 
     const handleTaskCreated = (task) => {
+      if (String(task.project?._id || task.project) !== projectId) return;
       setTasks((current) => {
         if (current.some((item) => item._id === task._id)) return current;
         return [...current, task].sort(byCreatedAtAscending);
       });
     };
     const handleTaskUpdated = (task) => {
+      if (String(task.project?._id || task.project) !== projectId) return;
       setTasks((current) => current.map((item) => item._id === task._id ? { ...item, ...task } : item));
     };
     const handleTaskDeleted = ({ _id }) => {
       setTasks((current) => current.filter((item) => item._id !== _id));
     };
     const handleProjectUpdated = (updatedProject) => {
+      if (String(updatedProject._id) !== projectId) return;
       setProject((current) => current ? { ...current, ...updatedProject, workspace: current.workspace } : current);
     };
 
-    socket.emit("join:project", projectId);
+    let active = true;
+    const refresh = async () => {
+      try { const [p, t] = await Promise.all([getProject(projectId), getProjectTasks(projectId)]); if (active) { setProject(p.project); setTasks(t.tasks.sort(byCreatedAtAscending)); } } catch { /* The page's normal error handling covers access changes. */ }
+    };
+    socket.on('connect', refresh);
+    const leaveScope = joinScope("project", projectId);
     socket.on("project:task:created", handleTaskCreated);
     socket.on("project:task:updated", handleTaskUpdated);
     socket.on("project:task:deleted", handleTaskDeleted);
     socket.on("project:updated", handleProjectUpdated);
 
     return () => {
+      active = false; socket.off("connect", refresh);
+      leaveScope();
       socket.off("project:task:created", handleTaskCreated);
       socket.off("project:task:updated", handleTaskUpdated);
       socket.off("project:task:deleted", handleTaskDeleted);
@@ -218,7 +221,7 @@ function ProjectDetails() {
   };
 
   const handleTaskCreated = (task) => {
-    setTasks((current) => [...current, task].sort(byCreatedAtAscending));
+    setTasks((current) => [...current.filter(t => t._id !== task._id), task].sort(byCreatedAtAscending));
 
     setShowCreateTaskModal(false);
 
@@ -226,74 +229,13 @@ function ProjectDetails() {
   };
 
   const handleTaskClick = (taskId) => {
-    setOpenTaskMenu(null);
-    setTaskMenuPosition(null);
 
     navigate(`/tasks/${taskId}`);
-  };
-
-  const handleOpenTaskMenu = (event, taskId) => {
-    event.stopPropagation();
-
-    if (openTaskMenu === taskId) {
-      setOpenTaskMenu(null);
-      setTaskMenuPosition(null);
-      return;
-    }
-
-    const buttonRect = event.currentTarget.getBoundingClientRect();
-
-    const menuWidth = 150;
-    const menuHeight = 92;
-    const gap = 8;
-    const viewportPadding = 8;
-
-    const spaceBelow = window.innerHeight - buttonRect.bottom;
-
-    const spaceAbove = buttonRect.top;
-
-    const shouldOpenUp =
-      spaceBelow < menuHeight + gap && spaceAbove >= menuHeight + gap;
-
-    let top;
-
-    if (shouldOpenUp) {
-      top = buttonRect.top - menuHeight - gap;
-    } else {
-      top = buttonRect.bottom + gap;
-    }
-
-    let left = buttonRect.right - menuWidth;
-
-    if (left < viewportPadding) {
-      left = viewportPadding;
-    }
-
-    if (left + menuWidth > window.innerWidth - viewportPadding) {
-      left = window.innerWidth - menuWidth - viewportPadding;
-    }
-
-    if (top < viewportPadding) {
-      top = viewportPadding;
-    }
-
-    if (top + menuHeight > window.innerHeight - viewportPadding) {
-      top = window.innerHeight - menuHeight - viewportPadding;
-    }
-
-    setTaskMenuPosition({
-      top,
-      left,
-    });
-
-    setOpenTaskMenu(taskId);
   };
 
   const handleEditTask = (event, task) => {
     event.stopPropagation();
 
-    setOpenTaskMenu(null);
-    setTaskMenuPosition(null);
 
     setSelectedTask(task);
     setShowEditTaskModal(true);
@@ -302,8 +244,6 @@ function ProjectDetails() {
   const handleDeleteTask = (event, task) => {
     event.stopPropagation();
 
-    setOpenTaskMenu(null);
-    setTaskMenuPosition(null);
 
     setSelectedTask(task);
     setShowDeleteTaskModal(true);
@@ -370,45 +310,6 @@ function ProjectDetails() {
     setShowDeleteTaskModal(false);
     setSelectedTask(null);
   };
-
-  useEffect(() => {
-    const handleOutsideClick = () => {
-      setOpenTaskMenu(null);
-      setTaskMenuPosition(null);
-    };
-
-    if (openTaskMenu) {
-      document.addEventListener("click", handleOutsideClick);
-    }
-
-    return () => {
-      document.removeEventListener("click", handleOutsideClick);
-    };
-  }, [openTaskMenu]);
-
-  useEffect(() => {
-    const closeMenuOnScroll = () => {
-      setOpenTaskMenu(null);
-      setTaskMenuPosition(null);
-    };
-
-    const closeMenuOnResize = () => {
-      setOpenTaskMenu(null);
-      setTaskMenuPosition(null);
-    };
-
-    if (openTaskMenu) {
-      window.addEventListener("scroll", closeMenuOnScroll, true);
-
-      window.addEventListener("resize", closeMenuOnResize);
-    }
-
-    return () => {
-      window.removeEventListener("scroll", closeMenuOnScroll, true);
-
-      window.removeEventListener("resize", closeMenuOnResize);
-    };
-  }, [openTaskMenu]);
 
   if (loading) {
     return <PageLoading variant="project">Loading project...</PageLoading>;
@@ -557,6 +458,8 @@ function ProjectDetails() {
           </div>
         </div>
 
+        <div role="tablist" aria-label="Project sections" className="mt-6 flex gap-8 rounded-t-2xl border-b border-slate-200 bg-white px-6">{[['tasks','Tasks',tasks.length],['files','Files',files.length],['chat','Chat',null]].map(([id,label,count]) => <button key={id} role="tab" aria-selected={activeTab === id} onClick={() => setActiveTab(id)} className={`border-b-2 px-1 py-4 text-sm font-semibold ${activeTab === id ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500'}`}>{label}{count !== null && <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-xs">{count}</span>}</button>)}</div>
+        {activeTab === 'files' && (
         <div className="mt-8 rounded-xl border border-slate-200 bg-white">
           <div className="flex flex-col gap-4 border-b border-slate-100 px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
             <div>
@@ -589,179 +492,19 @@ function ProjectDetails() {
             />
           </div>
         </div>
+        )}
 
-        <div className="mt-6 overflow-visible rounded-2xl border border-slate-200 bg-white shadow-sm">
-          <div className="flex flex-col gap-4 border-b border-slate-100 px-6 py-6 sm:flex-row sm:items-center sm:justify-between sm:px-8">
-            <div>
-              <h2 className="text-lg font-bold text-slate-900">
-                Project tasks
-              </h2>
+        {activeTab === 'tasks' && <div className="mt-6"><TaskBoard tasks={tasks} onOpen={handleTaskClick} onCreate={() => setShowCreateTaskModal(true)} onEdit={handleEditTask} onDelete={handleDeleteTask} onChanged={task => setTasks(current => current.map(t => t._id === task._id ? task : t))} /></div>}
 
-              <p className="mt-1 text-sm text-slate-500">
-                Manage and track tasks belonging to this project.
-              </p>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setShowCreateTaskModal(true)}
-              className="flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700"
-            >
-              <CheckSquare size={17} />
-              Create task
-            </button>
-          </div>
-
-          {tasks.length === 0 ? (
-            <div className="px-6 py-16 text-center sm:px-8">
-              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-50 text-blue-500">
-                <CheckSquare size={28} />
-              </div>
-
-              <h3 className="mt-5 text-base font-semibold text-slate-900">
-                No tasks yet
-              </h3>
-
-              <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-500">
-                Create your first task to start organizing the work for this
-                project.
-              </p>
-
-              <button
-                type="button"
-                onClick={() => setShowCreateTaskModal(true)}
-                className="mt-6 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700"
-              >
-                Create your first task
-              </button>
-            </div>
-          ) : (
-            <div className="divide-y divide-slate-100">
-              {tasks.map((task) => (
-                <div
-                  key={task._id}
-                  className="group relative px-6 py-6 transition hover:bg-slate-50 sm:px-8"
-                >
-                  <button
-                    type="button"
-                    onClick={() => handleTaskClick(task._id)}
-                    className="block w-full text-left"
-                  >
-                    <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-                      <div className="flex min-w-0 gap-4">
-                        <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-500 transition group-hover:bg-blue-50 group-hover:text-blue-600">
-                          <CheckSquare size={19} />
-                        </div>
-
-                        <div className="min-w-0">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <h3 className="break-words text-sm font-bold text-slate-900 group-hover:text-blue-600">
-                              {task.title}
-                            </h3>
-
-                            <span
-                              className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${getTaskStatusClasses(
-                                task.status
-                              )}`}
-                            >
-                              {getTaskStatusLabel(task.status)}
-                            </span>
-                          </div>
-
-                          <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-500">
-                            {task.description || "No description provided."}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="flex flex-wrap items-center gap-2 pr-10 lg:max-w-md lg:justify-end">
-                        <span
-                          className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold ${getTaskPriorityClasses(
-                            task.priority
-                          )}`}
-                        >
-                          <Flag size={13} />
-                          {getTaskPriorityLabel(task.priority)}
-                        </span>
-
-                        <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-500">
-                          <User size={13} />
-
-                          {task.assignedTo?.name || "Unassigned"}
-                        </span>
-
-                        <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-500">
-                          <CalendarDays size={13} />
-
-                          {formatDate(task.dueDate)}
-                        </span>
-                      </div>
-                    </div>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={(event) => handleOpenTaskMenu(event, task._id)}
-                    className="absolute right-5 top-6 flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-200 hover:text-slate-700 sm:right-7"
-                    aria-label="Task actions"
-                  >
-                    <MoreVertical size={19} />
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
+        {activeTab === 'chat' && (
         <div className="mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
           <WorkspaceChat
             workspaceId={project.workspace?._id || project.workspace}
             projectId={project._id}
           />
         </div>
+        )}
       </div>
-
-      {openTaskMenu && taskMenuPosition && (
-        <div
-          style={{
-            position: "fixed",
-            top: taskMenuPosition.top,
-            left: taskMenuPosition.left,
-          }}
-          onClick={(event) => event.stopPropagation()}
-          className="z-[100] w-[150px] overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-xl"
-        >
-          {(() => {
-            const task = tasks.find((item) => item._id === openTaskMenu);
-
-            if (!task) {
-              return null;
-            }
-
-            return (
-              <>
-                <button
-                  type="button"
-                  onClick={(event) => handleEditTask(event, task)}
-                  className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm font-medium text-slate-600 transition hover:bg-blue-50 hover:text-blue-600"
-                >
-                  <Pencil size={15} />
-                  Edit task
-                </button>
-
-                <button
-                  type="button"
-                  onClick={(event) => handleDeleteTask(event, task)}
-                  className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm font-medium text-red-600 transition hover:bg-red-50"
-                >
-                  <Trash2 size={15} />
-                  Delete task
-                </button>
-              </>
-            );
-          })()}
-        </div>
-      )}
 
       {showCreateTaskModal && (
         <CreateTaskModal

@@ -1,3 +1,4 @@
+import { notify } from "../services/notifications.js";
 import { requireDocument } from "../utils/requireDocument.js";
 import { requireWorkspaceAccess } from "../utils/workspaceAccess.js";
 import Task from "../models/task.model.js";
@@ -59,6 +60,9 @@ export const createTask = async (req, res) => {
         project: project._id,
         task: task._id,
     });
+    await task.populate('assignedTo', 'name email');
+    await task.populate('createdBy', 'name email');
+    if (assignedTo) await notify({ recipients: [assignedTo], actor: req.user.userId, type: 'task_assignment', text: `Assigned to you: ${task.title}`, link: `/tasks/${task._id}`, workspace: workspace._id });
     emitProjectTask(project._id, "created", task);
 
     res.status(201).json({
@@ -162,7 +166,8 @@ export const updateTask = async (req, res) => {
         task.dueDate = dueDate;
     }
 
-    if (assignedTo !== undefined) {
+    const previousAssignee = String(task.assignedTo || "");
+    if (assignedTo !== undefined && assignedTo) {
         const isWorkspaceMember = workspace.members.some(
             (member) => member.user.toString() === assignedTo
         );
@@ -177,6 +182,7 @@ export const updateTask = async (req, res) => {
         task.assignedTo = assignedTo;
     }
 
+    if (assignedTo === "") task.assignedTo = null;
     await task.save();
 
     await createActivity({
@@ -187,6 +193,9 @@ export const updateTask = async (req, res) => {
         project: project._id,
         task: task._id,
     });
+    await task.populate('assignedTo', 'name email');
+    await task.populate('createdBy', 'name email');
+    if (assignedTo && assignedTo !== previousAssignee) await notify({ recipients: [assignedTo], actor: req.user.userId, type: 'task_assignment', text: `Assigned to you: ${task.title}`, link: `/tasks/${task._id}`, workspace: workspace._id });
     emitProjectTask(project._id, "updated", task);
 
     res.status(200).json({

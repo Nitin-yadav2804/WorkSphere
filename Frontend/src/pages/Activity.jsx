@@ -17,9 +17,10 @@ import { getErrorDetails, getErrorMessage } from "../utils/errors.js";
 import LoadingState from "../components/ui/LoadingState.jsx";
 import { getWorkspaces } from "../services/workspaceService";
 import { getWorkspaceActivities } from "../services/activityService";
-import { getSocket } from "../services/socket.js";
+import { getSocket, joinScope } from "../services/socket.js";
 
 function Activity() {
+  const [revision, setRevision] = useState(0);
   const [workspaces, setWorkspaces] = useState([]);
   const [selectedWorkspace, setSelectedWorkspace] = useState("");
   const [activities, setActivities] = useState([]);
@@ -71,10 +72,10 @@ function Activity() {
 
   useEffect(() => {
     if (!selectedWorkspace) {
-      setActivities([]);
       return;
     }
 
+    let active = true;
     const fetchActivities = async () => {
       try {
         setLoadingActivities(true);
@@ -86,6 +87,7 @@ function Activity() {
           ...(actionFilter ? { action: actionFilter } : {}),
         });
 
+        if (!active) return;
         setActivities(response.activities || []);
 
         setPagination(
@@ -99,16 +101,18 @@ function Activity() {
       } catch (error) {
         console.error("Failed to fetch activities:", getErrorDetails(error));
 
+        if (!active) return;
         setError(getErrorMessage(error, "Failed to load activities."));
 
         setActivities([]);
       } finally {
-        setLoadingActivities(false);
+        if (active) setLoadingActivities(false);
       }
     };
 
     fetchActivities();
-  }, [selectedWorkspace, page, actionFilter]);
+    return () => { active = false; };
+  }, [selectedWorkspace, page, actionFilter, revision]);
 
   useEffect(() => {
     if (!selectedWorkspace) return undefined;
@@ -117,24 +121,20 @@ function Activity() {
     if (!socket) return undefined;
 
     const handleActivity = (activity) => {
+      if (String(activity.workspace?._id || activity.workspace) !== String(selectedWorkspace)) return;
       if (actionFilter && activity.action !== actionFilter) return;
-
-      setActivities((current) => {
-        if (current.some((item) => item._id === activity._id)) return current;
-        return page === 1 ? [activity, ...current].slice(0, 20) : current;
-      });
-      setPagination((current) => ({
-        ...current,
-        total: current.total + 1,
-        totalPages: Math.max(1, Math.ceil((current.total + 1) / current.limit)),
-      }));
+      setRevision(value => value + 1);
     };
+    const reconnect = () => setRevision(value => value + 1);
+    socket.on('connect', reconnect);
 
-    socket.emit("join:workspace", selectedWorkspace);
+    const leaveScope = joinScope("workspace", selectedWorkspace);
     socket.on("activity:created", handleActivity);
 
     return () => {
+      leaveScope();
       socket.off("activity:created", handleActivity);
+      socket.off("connect", reconnect);
     };
   }, [selectedWorkspace, actionFilter, page]);
 
@@ -276,6 +276,9 @@ function Activity() {
 
                   <option value="task_deleted">Task deleted</option>
 
+                  <option value="file_uploaded">File uploaded</option>
+                  <option value="file_deleted">File deleted</option>
+                  <option value="member_added">Member added</option>
                   <option value="comment_created">Comment created</option>
 
                   <option value="comment_updated">Comment updated</option>

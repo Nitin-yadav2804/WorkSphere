@@ -1,3 +1,5 @@
+import createActivity from "../utils/createActivity.js";
+import Message from "../models/message.model.js";
 import crypto from "crypto";
 
 import { requireDocument } from "../utils/requireDocument.js";
@@ -84,7 +86,8 @@ export const uploadFile = async (req, res, next) => {
             contentType: req.file.mimetype,
         });
 
-        const file = await File.create({
+        let file;
+        try { file = await File.create({
             originalName: req.file.originalname,
             storageKey,
             mimeType: req.file.mimetype,
@@ -93,8 +96,12 @@ export const uploadFile = async (req, res, next) => {
             workspace: workspaceId,
             project: projectId || undefined,
             task: taskId || undefined,
-        });
+        }); } catch (error) {
+            await deleteFromStorage(storageKey);
+            throw error;
+        }
 
+        await createActivity({ action: 'file_uploaded', description: `Uploaded "${file.originalName}"`, user: req.user.userId, workspace: workspaceId, project: projectId, task: taskId });
         return res.status(201).json({
             success: true,
             message: "File uploaded successfully",
@@ -294,6 +301,8 @@ export const deleteFile = async (req, res, next) => {
 
         await deleteFromStorage(file.storageKey);
         await File.findByIdAndDelete(fileId);
+        await Message.updateMany({ attachments: fileId }, { $pull: { attachments: fileId } });
+        await createActivity({ action: 'file_deleted', description: `Deleted "${file.originalName}"`, user: req.user.userId, workspace: file.workspace, project: file.project, task: file.task });
 
         return res.status(200).json({
             success: true,

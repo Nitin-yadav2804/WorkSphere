@@ -1,171 +1,199 @@
-import jwt from "jsonwebtoken";
-import { Server } from "socket.io";
-import Workspace from "../models/workspace.model.js";
-import Task from "../models/task.model.js";
-import Project from "../models/project.model.js";
-import Message from "../models/message.model.js";
-import { requireWorkspaceAccess } from "../utils/workspaceAccess.js";
-
+import jwt from 'jsonwebtoken';
+import { Server } from 'socket.io';
+import User from '../models/user.model.js';
+import { authorizeScope, sendMessage } from '../services/chat.js';
+import { events, publish } from './events.js';
 let io;
-
-const getTokenUser = (socket) => {
-    const token = socket.handshake.auth?.token;
-
-    if (!token) {
-        throw new Error("Authentication required");
+const ack = (callback, result) => {
+  if (typeof callback === 'function') callback(result);
+};
+const splitRoom = room => {
+  const [kind, id] = room.split(':');
+  return {
+    kind,
+    id
+  };
+};
+export function initializeSocket(httpServer) {
+  io = new Server(httpServer, {
+    cors: {
+      origin: ['http://localhost:5173', process.env.FRONTEND_URL, ...(process.env.FRONTEND_URLS || '').split(',')].map(s => s?.trim()).filter(Boolean),
+      credentials: true
     }
-
-    return jwt.verify(token, process.env.JWT_SECRET);
-};
-
-const ensureTaskAccess = async (taskId, userId) => {
-    const task = await Task.findById(taskId).select("project");
-    if (!task) throw new Error("Task not found");
-
-    const project = await Project.findById(task.project).select("workspace");
-    if (!project) throw new Error("Project not found");
-
-    await requireWorkspaceAccess(project.workspace, userId, {
-        message: "Task not found or access denied",
-        statusCode: 403,
-    });
-};
-
-export const initializeSocket = (httpServer) => {
-    io = new Server(httpServer, {
-        cors: {
-            origin: ["http://localhost:5173", process.env.FRONTEND_URL].filter(Boolean),
-            credentials: true,
-        },
-    });
-
-    io.use((socket, next) => {
-        try {
-            socket.user = getTokenUser(socket);
-            next();
-        } catch {
-            next(new Error("Invalid or expired token"));
+  });
+  io.use(async (socket, next) => {
+    try {
+      const decoded = jwt.verify(socket.handshake.auth?.token, process.env.JWT_SECRET);
+      const user = await User.findById(decoded.userId).select('name isActive');
+      if (!user?.isActive) throw new Error();
+      socket.user = {
+        ...decoded,
+        name: user.name
+      };
+      next();
+    } catch {
+      next(new Error('Invalid or expired token'));
+    }
+  });
+  const deliver = async ({
+    room,
+    event,
+    data
+  }) => {
+    const {
+      kind,
+      id
+    } = splitRoom(room);
+    const sockets = await io.in(room).fetchSockets();
+    for (const socket of sockets) {
+      try {
+        const account = await User.findById(socket.user.userId).select('isActive');
+        if (!account?.isActive) {
+          socket.disconnect(true);
+          continue;
         }
+        if (kind !== 'user') await authorizeScope(kind, id, socket.user.userId);
+        socket.emit(event, data);
+      } catch {
+        socket.leave(room);
+        socket.emit('scope:revoked', {
+          room
+        });
+      }
+    }
+  };
+  const listener = payload => {
+    deliver(payload).catch(error => console.error('Realtime delivery failed', error.message));
+  };
+  events.on('publish', listener);
+  io.engine.on('close', () => events.off('publish', listener));
+  const presence = async room => {
+    const sockets = await io.in(room).fetchSockets();
+    const users = [...new Map(sockets.map(s => [String(s.user.userId), {
+      _id: s.user.userId,
+      name: s.user.name
+    }])).values()];
+    publish(room, 'chat:presence', {
+      room,
+      users,
+      onlineCount: users.length
     });
-
-    io.on("connection", (socket) => {
-        socket.data.workspaceIds = new Set();
-
-        socket.on("join:task", async (taskId, callback) => {
-            try {
-                await ensureTaskAccess(taskId, socket.user.userId);
-                socket.join(`task:${taskId}`);
-                callback?.({ success: true });
-            } catch (error) {
-                callback?.({ success: false, message: error.message });
-            }
-        });
-
-        socket.on("join:workspace", async (workspaceId, callback) => {
-            try {
-                await requireWorkspaceAccess(workspaceId, socket.user.userId, {
-                    message: "Workspace not found or access denied",
-                    statusCode: 403,
-                });
-                socket.join(`workspace:${workspaceId}`);
-                socket.data.workspaceIds.add(String(workspaceId));
-                emitWorkspacePresence(workspaceId);
-                callback?.({ success: true });
-            } catch (error) {
-                callback?.({ success: false, message: error.message });
-            }
-        });
-
-        socket.on("join:project", async (projectId, callback) => {
-            try {
-                const project = await Project.findById(projectId).select("workspace");
-                if (!project) throw new Error("Project not found");
-                await requireWorkspaceAccess(project.workspace, socket.user.userId, {
-                    message: "Project not found or access denied",
-                    statusCode: 403,
-                });
-                socket.join(`project:${projectId}`);
-                callback?.({ success: true });
-            } catch (error) {
-                callback?.({ success: false, message: error.message });
-            }
-        });
-
-        socket.on("chat:send", async ({ workspaceId, projectId, content }, callback) => {
-            try {
-                let targetRoom = `workspace:${workspaceId}`;
-                await requireWorkspaceAccess(workspaceId, socket.user.userId, {
-                    message: "Workspace not found or access denied",
-                    statusCode: 403,
-                });
-
-                if (projectId) {
-                    const project = await Project.findOne({ _id: projectId, workspace: workspaceId }).select("_id");
-                    if (!project) throw new Error("Project not found or access denied");
-                    targetRoom = `project:${projectId}`;
-                }
-
-                const message = await Message.create({
-                    content: String(content || "").trim(),
-                    workspace: workspaceId,
-                    project: projectId || undefined,
-                    user: socket.user.userId,
-                });
-                await message.populate("user", "name email");
-                io?.to(targetRoom).emit("chat:message", message);
-                callback?.({ success: true, message });
-            } catch (error) {
-                callback?.({ success: false, message: error.message });
-            }
-        });
-
-        socket.on("chat:typing", ({ workspaceId, isTyping }) => {
-            const room = `workspace:${workspaceId}`;
-            if (!socket.rooms.has(room)) return;
-
-            socket.to(room).emit("chat:typing", {
-                userId: socket.user.userId,
-                isTyping: Boolean(isTyping),
-            });
-        });
-
-        socket.on("disconnect", () => {
-            for (const workspaceId of socket.data.workspaceIds || []) {
-                emitWorkspacePresence(workspaceId);
-            }
-        });
+  };
+  io.on('connection', socket => {
+    socket.use(async (_packet, next) => {
+      try {
+        const account = await User.findById(socket.user.userId).select('isActive');
+        if (!account?.isActive) {
+          socket.disconnect(true);
+          return;
+        }
+        next();
+      } catch {
+        next(new Error('Unable to authorize event'));
+      }
     });
-
-    return io;
-};
-
-export const emitTaskComment = (taskId, event, comment) => {
-    io?.to(`task:${taskId}`).emit(`comment:${event}`, comment);
-};
-
-export const emitWorkspaceMessage = (workspaceId, message) => {
-    io?.to(`workspace:${workspaceId}`).emit("chat:message", message);
-};
-
-export const emitWorkspaceActivity = (workspaceId, activity) => {
-    io?.to(`workspace:${workspaceId}`).emit("activity:created", activity);
-};
-
-export const emitProjectMessage = (projectId, message) => {
-    io?.to(`project:${projectId}`).emit("chat:message", message);
-};
-
-export const emitProjectTask = (projectId, event, task) => {
-    io?.to(`project:${projectId}`).emit(`project:task:${event}`, task);
-};
-
-export const emitProjectUpdate = (projectId, project) => {
-    io?.to(`project:${projectId}`).emit("project:updated", project);
-};
-
-export const emitWorkspacePresence = (workspaceId) => {
-    const room = io?.sockets.adapter.rooms.get(`workspace:${workspaceId}`);
-    io?.to(`workspace:${workspaceId}`).emit("workspace:presence", {
-        onlineCount: room?.size || 0,
+    socket.join(`user:${socket.user.userId}`);
+    const scopeVersions = new Map();
+    const expiry = setTimeout(() => socket.disconnect(true), Math.min(2147483647, Math.max(0, socket.user.exp * 1000 - Date.now())));
+    for (const kind of ['workspace', 'project', 'task', 'conversation']) {
+      socket.on(`join:${kind}`, async (id, callback) => {
+        const key = `${kind}:${id}`;
+        const version = (scopeVersions.get(key) || 0) + 1;
+        scopeVersions.set(key, version);
+        try {
+          const {
+            room
+          } = await authorizeScope(kind, id, socket.user.userId);
+          if (!socket.connected || scopeVersions.get(key) !== version) return ack(callback, {
+            success: false,
+            message: 'Subscription cancelled'
+          });
+          await socket.join(room);
+          ack(callback, {
+            success: true
+          });
+          await presence(room);
+        } catch {
+          ack(callback, {
+            success: false,
+            message: 'Access denied'
+          });
+        }
+      });
+      socket.on(`leave:${kind}`, async id => {
+        const room = `${kind}:${id}`;
+        scopeVersions.set(room, (scopeVersions.get(room) || 0) + 1);
+        await socket.leave(room);
+        publish(room, 'chat:typing', {
+          room,
+          userId: socket.user.userId,
+          isTyping: false
+        });
+        await presence(room);
+      });
+    }
+    socket.on('chat:send', async (input = {}, callback) => {
+      try {
+        const kind = input.kind || (input.projectId ? 'project' : 'workspace');
+        const id = input.id || input.projectId || input.workspaceId;
+        const message = await sendMessage(kind, id, socket.user.userId, input);
+        ack(callback, {
+          success: true,
+          message
+        });
+      } catch (error) {
+        ack(callback, {
+          success: false,
+          message: error.statusCode ? error.message : 'Unable to send message'
+        });
+      }
     });
+    socket.on('chat:typing', async (input = {}) => {
+      try {
+        const kind = input.kind || 'workspace',
+          id = input.id || input.workspaceId;
+        const {
+          room
+        } = await authorizeScope(kind, id, socket.user.userId);
+        if (!socket.rooms.has(room)) return;
+        publish(room, 'chat:typing', {
+          room,
+          userId: socket.user.userId,
+          name: socket.user.name,
+          isTyping: Boolean(input.isTyping)
+        });
+      } catch {/* Unauthorized typing is ignored. */}
+    });
+    socket.on('disconnecting', () => {
+      socket.data.previousRooms = [...socket.rooms].filter(room => /^(workspace|project|conversation):/.test(room));
+    });
+    socket.on('disconnect', () => {
+      clearTimeout(expiry);
+      for (const room of socket.data.previousRooms || []) {
+        publish(room, 'chat:typing', {
+          room,
+          userId: socket.user.userId,
+          isTyping: false
+        });
+        presence(room).catch(() => {});
+      }
+    });
+  });
+  return io;
+}
+export const emitTaskComment = (id, event, comment) => publish(`task:${id}`, `comment:${event}`, {
+  ...(comment.toObject?.() || comment),
+  task: id
+});
+export const emitWorkspaceMessage = (id, message) => publish(`workspace:${id}`, 'chat:message', message);
+export const emitWorkspaceActivity = (id, activity) => publish(`workspace:${id}`, 'activity:created', activity);
+export const emitProjectMessage = (id, message) => publish(`project:${id}`, 'chat:message', message);
+export const emitProjectTask = (id, event, task) => {
+  const value = {
+    ...(task.toObject?.() || task),
+    project: id
+  };
+  publish(`project:${id}`, `project:task:${event}`, value);
+  if (task._id) publish(`task:${task._id}`, `task:${event}`, value);
 };
+export const emitProjectUpdate = (id, project) => publish(`project:${id}`, 'project:updated', project);

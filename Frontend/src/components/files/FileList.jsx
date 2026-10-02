@@ -84,6 +84,7 @@ function FileList({ files, onDeleted }) {
               <Download size={18} />
             </button>
 
+            {onDeleted && (
             <button
               type="button"
               onClick={() => handleDelete(file)}
@@ -93,6 +94,7 @@ function FileList({ files, onDeleted }) {
             >
               <Trash2 size={18} />
             </button>
+            )}
           </div>
         </div>
       ))}
