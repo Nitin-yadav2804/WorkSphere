@@ -103,3 +103,7 @@ export const emitTaskComment = (taskId, event, comment) => {
 export const emitWorkspaceMessage = (workspaceId, message) => {
     io?.to(`workspace:${workspaceId}`).emit("chat:message", message);
 };
+
+export const emitWorkspaceActivity = (workspaceId, activity) => {
+    io?.to(`workspace:${workspaceId}`).emit("activity:created", activity);
+};

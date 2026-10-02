@@ -1,4 +1,5 @@
 import Activity from "../models/activity.model.js";
+import { emitWorkspaceActivity } from "../realtime/socket.js";
 
 const createActivity = async ({
     action,
@@ -8,7 +9,7 @@ const createActivity = async ({
     project,
     task,
 }) => {
-    return await Activity.create({
+    const activity = await Activity.create({
         action,
         description,
         user,
@@ -16,6 +17,16 @@ const createActivity = async ({
         project,
         task,
     });
+
+    await activity.populate("user", "name email");
+    await activity.populate("project", "name");
+    await activity.populate("task", "title");
+
+    if (workspace) {
+        emitWorkspaceActivity(workspace, activity);
+    }
+
+    return activity;
 };
 
 export default createActivity;

@@ -17,6 +17,7 @@ import { getErrorDetails, getErrorMessage } from "../utils/errors.js";
 import LoadingState from "../components/ui/LoadingState.jsx";
 import { getWorkspaces } from "../services/workspaceService";
 import { getWorkspaceActivities } from "../services/activityService";
+import { getSocket } from "../services/socket.js";
 
 function Activity() {
   const [workspaces, setWorkspaces] = useState([]);
@@ -108,6 +109,34 @@ function Activity() {
 
     fetchActivities();
   }, [selectedWorkspace, page, actionFilter]);
+
+  useEffect(() => {
+    if (!selectedWorkspace) return undefined;
+
+    const socket = getSocket();
+    if (!socket) return undefined;
+
+    const handleActivity = (activity) => {
+      if (actionFilter && activity.action !== actionFilter) return;
+
+      setActivities((current) => {
+        if (current.some((item) => item._id === activity._id)) return current;
+        return page === 1 ? [activity, ...current].slice(0, 20) : current;
+      });
+      setPagination((current) => ({
+        ...current,
+        total: current.total + 1,
+        totalPages: Math.max(1, Math.ceil((current.total + 1) / current.limit)),
+      }));
+    };
+
+    socket.emit("join:workspace", selectedWorkspace);
+    socket.on("activity:created", handleActivity);
+
+    return () => {
+      socket.off("activity:created", handleActivity);
+    };
+  }, [selectedWorkspace, actionFilter, page]);
 
   // Change workspace
 
