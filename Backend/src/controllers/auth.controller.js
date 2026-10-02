@@ -41,11 +41,11 @@ export const loginUser = async (req, res) => {
         throw new AppError("Your account has been deactivated", 403);
     }
 
-    const isPasswordCorrect = await requireDocument(
-        bcrypt.compare(password, user.password),
-        "Incorrect password",
-        401
-    );
+    const isPasswordCorrect = await bcrypt.compare(password, user.password);
+
+    if (!isPasswordCorrect) {
+        throw new AppError("Incorrect password", 401);
+    }
 
     const token = jwt.sign(
         {
@@ -68,6 +68,69 @@ export const loginUser = async (req, res) => {
             email: user.email,
             role: user.role,
         },
+    });
+};
+
+export const updateProfile = async (req, res) => {
+    const user = await requireDocument(
+        User.findById(req.user.userId),
+        "User not found",
+        404
+    );
+
+    const { name, email } = req.body;
+    const emailChanged = email.toLowerCase() !== user.email;
+
+    if (emailChanged) {
+        const existingUser = await User.findOne({
+            email: email.toLowerCase(),
+            _id: { $ne: user._id },
+        });
+
+        if (existingUser) {
+            throw new AppError("Email is already in use", 409);
+        }
+    }
+
+    user.name = name;
+    user.email = email.toLowerCase();
+    await user.save();
+
+    res.status(200).json({
+        success: true,
+        message: "Profile updated successfully",
+        user: {
+            id: user._id,
+            name: user.name,
+            email: user.email,
+            role: user.role,
+        },
+    });
+};
+
+export const changePassword = async (req, res) => {
+    const user = await requireDocument(
+        User.findById(req.user.userId),
+        "User not found",
+        404
+    );
+
+    const { currentPassword, newPassword } = req.body;
+    const currentPasswordMatches = await bcrypt.compare(
+        currentPassword,
+        user.password
+    );
+
+    if (!currentPasswordMatches) {
+        throw new AppError("Current password is incorrect", 401);
+    }
+
+    user.password = await bcrypt.hash(newPassword, 10);
+    await user.save();
+
+    res.status(200).json({
+        success: true,
+        message: "Password updated successfully",
     });
 };
 
