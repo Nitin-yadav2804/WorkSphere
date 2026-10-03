@@ -143,6 +143,8 @@ In one terminal, from the repository root:
 npm start --prefix Backend
 ```
 
+For automatic backend restarts while developing, use `npm run dev --prefix Backend`.
+
 In a second terminal:
 
 ```bash
@@ -246,7 +248,7 @@ The repository includes a Vercel SPA rewrite configuration in `Frontend/vercel.j
 
 The backend starts a persistent HTTP server with Socket.IO. Deploy it to a Node.js runtime that supports long-lived socket connections and run `node src/app.js` from `Backend` after installing dependencies.
 
-Set `MONGO_URI`, `JWT_SECRET`, `FRONTEND_URL`, and the storage variables on the backend. `FRONTEND_URL` must match the frontend's exact origin for REST CORS access. Use R2 for cloud uploads when local disk persistence is unavailable.
+Set `MONGO_URI`, `JWT_SECRET`, `FRONTEND_URL`, and the storage variables on the backend. `FRONTEND_URL` must match the frontend's exact origin. Optional `FRONTEND_URLS` accepts a comma-separated list of additional origins for both REST and Socket.IO. Use R2 for cloud uploads when local disk persistence is unavailable.
 
 Realtime room state currently lives in one backend process. A multi-instance deployment requires a shared Socket.IO adapter and appropriate connection routing. After deployment, verify login, reconnects, two-account collaboration, and file access against the deployed services.
 

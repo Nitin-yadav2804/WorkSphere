@@ -34,11 +34,14 @@ export const addProjectSchema = z
     message: "Due date must be after the start date",
     path: ["dueDate"],
   });
-// Editing historically trims the name and does not validate the date order.
+// Creation and editing use the same date ordering rule.
 export const editProjectSchema = z.object({
   name: projectName(true),
   description: fields.description,
   status: z.enum(["active", "completed", "archived"]),
   startDate: fields.startDate,
   dueDate: fields.dueDate,
+}).refine(datesInOrder, {
+  message: "Due date must be after start date",
+  path: ["dueDate"],
 });

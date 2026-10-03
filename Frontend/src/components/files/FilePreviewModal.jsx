@@ -29,7 +29,7 @@ function FilePreviewModal({ file, onClose }) {
         const { url } = await getFileAccess(file._id);
 
         const response = url.startsWith("/api/")
-          ? await fetch(`http://localhost:3000${url}`, {
+          ? await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:3000"}${url}`, {
               headers: {
                 Authorization: `Bearer ${localStorage.getItem("token")}`,
               },

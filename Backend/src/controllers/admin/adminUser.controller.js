@@ -1,3 +1,4 @@
+import AppError from "../../utils/AppError.js";
 import User from "../../models/user.model.js";
 import deleteUserCascade from "../../utils/deleteUserCascade.js";
 
@@ -50,6 +51,9 @@ export const searchUsers = async (req, res) => {
 
 export const changeUserRole = async (req, res) => {
     const { userId } = req.params;
+    if (String(userId) === String(req.user.userId)) {
+        throw new AppError("You cannot change your own administrator access or delete your own account", 403);
+    }
     const { role } = req.body;
 
     if (!["user", "admin"].includes(role)) {
@@ -81,6 +85,9 @@ export const changeUserRole = async (req, res) => {
 
 export const toggleUserStatus = async (req, res) => {
     const { userId } = req.params;
+    if (String(userId) === String(req.user.userId)) {
+        throw new AppError("You cannot change your own administrator access or delete your own account", 403);
+    }
 
     const user = await User.findById(userId);
 
@@ -109,6 +116,9 @@ export const toggleUserStatus = async (req, res) => {
 
 export const deleteUser = async (req, res) => {
     const { userId } = req.params;
+    if (String(userId) === String(req.user.userId)) {
+        throw new AppError("You cannot change your own administrator access or delete your own account", 403);
+    }
 
     const user = await User.findById(userId);
 

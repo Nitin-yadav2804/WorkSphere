@@ -34,7 +34,7 @@ test("project forms retain date-order validation, exact wording and edit behavio
   );
   assert.equal(
     editProjectSchema.safeParse({ ...data, status: "active" }).success,
-    true
+    false
   );
   assert.equal(
     addProjectSchema.safeParse({ ...data, dueDate: "", workspaceId: "" }).error

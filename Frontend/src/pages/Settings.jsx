@@ -41,12 +41,13 @@ function Settings() {
     },
   });
 
+  const { reset: resetProfile } = profileForm;
   useEffect(() => {
-    profileForm.reset({
+    resetProfile({
       name: currentUser?.name || "",
       email: currentUser?.email || "",
     });
-  }, [currentUser]);
+  }, [currentUser, resetProfile]);
 
   const handleProfileSubmit = async (data) => {
     try {

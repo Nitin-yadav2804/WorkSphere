@@ -1,3 +1,4 @@
+import { getAllowedOrigins } from '../config/origins.js';
 import jwt from 'jsonwebtoken';
 import { Server } from 'socket.io';
 import User from '../models/user.model.js';
@@ -17,7 +18,7 @@ const splitRoom = room => {
 export function initializeSocket(httpServer) {
   io = new Server(httpServer, {
     cors: {
-      origin: ['http://localhost:5173', process.env.FRONTEND_URL, ...(process.env.FRONTEND_URLS || '').split(',')].map(s => s?.trim()).filter(Boolean),
+      origin: getAllowedOrigins(),
       credentials: true
     }
   });

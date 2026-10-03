@@ -45,7 +45,7 @@ export const createTask = async (req, res) => {
         title,
         description,
         project: projectId,
-        assignedTo,
+        assignedTo: assignedTo || undefined,
         createdBy: req.user.userId,
         status,
         priority,

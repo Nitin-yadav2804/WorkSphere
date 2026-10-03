@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { ArrowLeft, Users, User } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 
@@ -14,21 +14,20 @@ function AdminWorkspaceDetails() {
   const [workspace, setWorkspace] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchWorkspace = async () => {
-    try {
-      const response = await getAdminWorkspace(workspaceId);
+  const fetchWorkspace = useCallback(() => {
+    return getAdminWorkspace(workspaceId).then(response => {
 
       setWorkspace(response.workspace);
-    } catch (error) {
+    }).catch(error => {
       console.error("Failed to fetch workspace:", getErrorDetails(error));
-    } finally {
+    }).finally(() => {
       setLoading(false);
-    }
-  };
+    });
+  }, [workspaceId]);
 
   useEffect(() => {
     fetchWorkspace();
-  }, [workspaceId]);
+  }, [fetchWorkspace]);
 
   if (loading) {
     return <PageLoading variant="admin">Loading workspace...</PageLoading>;

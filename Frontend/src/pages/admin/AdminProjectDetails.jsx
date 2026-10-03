@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { ArrowLeft, ClipboardList, User } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
@@ -19,24 +19,23 @@ function AdminProjectDetails() {
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchProject = async () => {
-    try {
-      const response = await getAdminProject(projectId);
+  const fetchProject = useCallback(() => {
+    return getAdminProject(projectId).then(response => {
 
       setProject(response.project);
       setTasks(response.tasks);
-    } catch (error) {
+    }).catch(error => {
       console.error("Failed to fetch project:", getErrorDetails(error));
 
       toast.error(getErrorMessage(error, "Failed to load project"));
-    } finally {
+    }).finally(() => {
       setLoading(false);
-    }
-  };
+    });
+  }, [projectId]);
 
   useEffect(() => {
     fetchProject();
-  }, [projectId]);
+  }, [fetchProject]);
 
   const handleDeleteTask = async (taskId) => {
     const confirmed = window.confirm(

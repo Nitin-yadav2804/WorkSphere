@@ -140,3 +140,13 @@ test("sorting preserves oldest-created and newest-updated ordering without mutat
     ["a", "b"]
   );
 });
+
+test('task edits explicitly clear assignment and due date while creation omits them', () => {
+  const data = { title: 'Task', description: '', assignedTo: '', dueDate: '', status: 'todo', priority: 'low' };
+  const editing = toTaskPayload(data, { editing: true });
+  assert.equal(editing.assignedTo, '');
+  assert.equal(editing.dueDate, null);
+  const creating = toTaskPayload(data);
+  assert.equal(creating.assignedTo, undefined);
+  assert.equal(creating.dueDate, undefined);
+});

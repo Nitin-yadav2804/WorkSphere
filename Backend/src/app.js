@@ -1,3 +1,4 @@
+import { getAllowedOrigins } from "./config/origins.js";
 import "dotenv/config";
 import { createServer } from "node:http";
 import express from "express";
@@ -25,10 +26,7 @@ const app = express();
 
 app.use(express.json());
 
-const allowedOrigins = [
-  "http://localhost:5173",
-  process.env.FRONTEND_URL,
-].filter(Boolean);
+const allowedOrigins = getAllowedOrigins();
 
 app.use(
   cors({

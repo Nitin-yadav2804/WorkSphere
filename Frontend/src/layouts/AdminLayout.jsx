@@ -1,5 +1,5 @@
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import {
   LayoutDashboard,
   Users,
@@ -19,7 +19,7 @@ function AdminLayout() {
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  const user = JSON.parse(localStorage.getItem("user"));
+  const user = useSelector(state => state.auth.user);
 
   const handleLogout = () => {
     dispatch(logout());

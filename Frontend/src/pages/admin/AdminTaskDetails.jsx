@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { ArrowLeft, ClipboardList, User, Trash2 } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
@@ -26,33 +26,31 @@ function AdminTaskDetails() {
 
   const [commentsLoading, setCommentsLoading] = useState(true);
 
-  const fetchTask = async () => {
-    try {
-      const response = await getAdminTask(taskId);
+  const fetchTask = useCallback(() => {
+    return getAdminTask(taskId).then(response => {
 
       setTask(response.task);
-    } catch (error) {
+    }).catch(error => {
       console.error("Failed to fetch task:", getErrorDetails(error));
 
       toast.error(getErrorMessage(error, "Failed to load task"));
-    } finally {
+    }).finally(() => {
       setLoading(false);
-    }
-  };
+    });
+  }, [taskId]);
 
-  const fetchComments = async () => {
-    try {
-      const response = await getAdminTaskComments(taskId);
+  const fetchComments = useCallback(() => {
+    return getAdminTaskComments(taskId).then(response => {
 
       setComments(response.comments);
-    } catch (error) {
+    }).catch(error => {
       console.error("Failed to fetch comments:", getErrorDetails(error));
 
       toast.error(getErrorMessage(error, "Failed to load comments"));
-    } finally {
+    }).finally(() => {
       setCommentsLoading(false);
-    }
-  };
+    });
+  }, [taskId]);
 
   const handleDeleteComment = async (commentId, commentAuthor) => {
     const confirmed = window.confirm(
@@ -81,7 +79,7 @@ function AdminTaskDetails() {
   useEffect(() => {
     fetchTask();
     fetchComments();
-  }, [taskId]);
+  }, [fetchTask, fetchComments]);
 
   if (loading) {
     return <PageLoading variant="admin">Loading task...</PageLoading>;

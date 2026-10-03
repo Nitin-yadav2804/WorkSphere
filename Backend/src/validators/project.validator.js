@@ -19,6 +19,6 @@ export const updateProjectSchema = z.object({
     name: createProjectSchema.shape.name.optional(),
     description: createProjectSchema.shape.description,
     status: z.enum(["active", "completed", "archived"]).optional(),
-    startDate: createProjectSchema.shape.startDate,
-    dueDate: createProjectSchema.shape.dueDate,
+    startDate: createProjectSchema.shape.startDate.nullable(),
+    dueDate: createProjectSchema.shape.dueDate.nullable(),
 });

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Search, Eye, Trash2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -18,19 +18,18 @@ function AdminWorkspaces() {
 
   const navigate = useNavigate();
 
-  const fetchWorkspaces = async () => {
-    try {
-      const response = await getAdminWorkspaces();
+  const fetchWorkspaces = useCallback(() => {
+    return getAdminWorkspaces().then(response => {
 
       setWorkspaces(response.workspaces);
-    } catch (error) {
+    }).catch(error => {
       console.error("Failed to fetch workspaces:", getErrorDetails(error));
 
       toast.error(getErrorMessage(error, "Failed to load workspaces"));
-    } finally {
+    }).finally(() => {
       setLoading(false);
-    }
-  };
+    });
+  }, []);
 
   const handleDeleteWorkspace = async (workspaceId) => {
     const confirmed = window.confirm(
@@ -56,7 +55,7 @@ function AdminWorkspaces() {
 
   useEffect(() => {
     fetchWorkspaces();
-  }, []);
+  }, [fetchWorkspaces]);
 
   const filteredWorkspaces = workspaces.filter((workspace) => {
     const searchTerm = search.toLowerCase();

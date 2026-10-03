@@ -19,4 +19,6 @@ export const createTaskSchema = z.object({
 
     dueDate: z.string().datetime("Invalid due date").optional(),
 });
-export const updateTaskSchema = createTaskSchema.partial();
+export const updateTaskSchema = createTaskSchema.partial().extend({
+    dueDate: createTaskSchema.shape.dueDate.nullable(),
+});

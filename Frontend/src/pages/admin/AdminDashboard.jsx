@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   Users,
   Building2,
@@ -41,24 +41,23 @@ function AdminDashboard() {
   const [recentActivity, setRecentActivity] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchDashboard = async () => {
-    try {
-      const response = await getAdminDashboard();
+  const fetchDashboard = useCallback(() => {
+    return getAdminDashboard().then(response => {
 
       setStats(response.stats);
       setTaskStats(response.taskStats);
       setProjectStats(response.projectStats);
       setRecentActivity(response.recentActivity);
-    } catch (error) {
+    }).catch(error => {
       console.error("Failed to fetch admin dashboard:", getErrorDetails(error));
-    } finally {
+    }).finally(() => {
       setLoading(false);
-    }
-  };
+    });
+  }, []);
 
   useEffect(() => {
     fetchDashboard();
-  }, []);
+  }, [fetchDashboard]);
 
   if (loading) {
     return (

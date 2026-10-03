@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Search, Eye, Trash2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -18,19 +18,18 @@ function AdminProjects() {
 
   const navigate = useNavigate();
 
-  const fetchProjects = async () => {
-    try {
-      const response = await getAdminProjects();
+  const fetchProjects = useCallback(() => {
+    return getAdminProjects().then(response => {
 
       setProjects(response.projects);
-    } catch (error) {
+    }).catch(error => {
       console.error("Failed to fetch projects:", getErrorDetails(error));
 
       toast.error(getErrorMessage(error, "Failed to load projects"));
-    } finally {
+    }).finally(() => {
       setLoading(false);
-    }
-  };
+    });
+  }, []);
 
   const handleDeleteProject = async (projectId) => {
     const confirmed = window.confirm(
@@ -56,7 +55,7 @@ function AdminProjects() {
 
   useEffect(() => {
     fetchProjects();
-  }, []);
+  }, [fetchProjects]);
 
   const filteredProjects = projects.filter((project) => {
     const searchTerm = search.toLowerCase();

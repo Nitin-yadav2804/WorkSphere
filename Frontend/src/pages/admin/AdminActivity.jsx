@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Activity as ActivityIcon, Search } from "lucide-react";
 import { toast } from "sonner";
 
@@ -12,23 +12,22 @@ function AdminActivity() {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
 
-  const fetchActivities = async () => {
-    try {
-      const response = await getAdminActivities();
+  const fetchActivities = useCallback(() => {
+    return getAdminActivities().then(response => {
 
       setActivities(response.activities);
-    } catch (error) {
+    }).catch(error => {
       console.error("Failed to fetch activities:", getErrorDetails(error));
 
       toast.error(getErrorMessage(error, "Failed to load activity"));
-    } finally {
+    }).finally(() => {
       setLoading(false);
-    }
-  };
+    });
+  }, []);
 
   useEffect(() => {
     fetchActivities();
-  }, []);
+  }, [fetchActivities]);
 
   const filteredActivities = activities.filter((activity) => {
     const searchText = search.toLowerCase();

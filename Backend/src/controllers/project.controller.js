@@ -1,3 +1,4 @@
+import AppError from "../utils/AppError.js";
 import { requireDocument } from "../utils/requireDocument.js";
 import { requireWorkspaceAccess } from "../utils/workspaceAccess.js";
 import Project from "../models/project.model.js";
@@ -14,6 +15,10 @@ export const createProject = async (req, res) => {
         req.user.userId,
         { message: "Workspace not found or access denied", statusCode: 404 }
     );
+
+    if (startDate && dueDate && new Date(dueDate) < new Date(startDate)) {
+        throw new AppError("Due date must be after start date", 400);
+    }
 
     const project = await Project.create({
         name,
@@ -118,6 +123,9 @@ export const updateProject = async (req, res) => {
         project.dueDate = dueDate;
     }
 
+    if (project.startDate && project.dueDate && new Date(project.dueDate) < new Date(project.startDate)) {
+        throw new AppError("Due date must be after start date", 400);
+    }
     await project.save();
 
     await createActivity({

@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useSelector } from "react-redux";
+import { useCallback, useEffect, useState } from "react";
 import { Search, Power, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -16,20 +17,19 @@ function AdminUsers() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
 
-  const currentUser = JSON.parse(localStorage.getItem("user"));
+  const currentUser = useSelector(state => state.auth.user);
 
-  const fetchUsers = async (searchTerm = "") => {
-    try {
-      const response = await getAdminUsers(searchTerm);
+  const fetchUsers = useCallback((searchTerm = "") => {
+    return getAdminUsers(searchTerm).then(response => {
       setUsers(response.users);
-    } catch (error) {
+    }).catch(error => {
       console.error("Failed to fetch users:", getErrorDetails(error));
 
       toast.error(getErrorMessage(error, "Failed to load users"));
-    } finally {
+    }).finally(() => {
       setLoading(false);
-    }
-  };
+    });
+  }, []);
 
   const handleRoleChange = async (userId, role) => {
     try {
@@ -87,7 +87,7 @@ function AdminUsers() {
 
   useEffect(() => {
     fetchUsers();
-  }, []);
+  }, [fetchUsers]);
 
   return (
     <div className="p-4 sm:p-6 lg:p-8">
@@ -172,7 +172,7 @@ function AdminUsers() {
                     </td>
 
                     <td className="px-4 py-4 sm:px-6">
-                      {user.email === currentUser?.email ? (
+                      {user._id === (currentUser?._id || currentUser?.id) ? (
                         <span className="rounded-lg bg-blue-50 px-3 py-1.5 text-sm font-medium text-blue-600">
                           Admin
                         </span>
@@ -204,7 +204,7 @@ function AdminUsers() {
                     </td>
 
                     <td className="px-4 py-4 sm:px-6">
-                      {user.email === currentUser?.email ? (
+                      {user._id === (currentUser?._id || currentUser?.id) ? (
                         <span className="text-sm text-slate-400">—</span>
                       ) : (
                         <div className="flex items-center gap-2">

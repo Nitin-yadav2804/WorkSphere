@@ -95,36 +95,20 @@ function WorkspaceDetails() {
 
   const [deletingProject, setDeletingProject] = useState(false);
 
-  const fetchWorkspace = async () => {
-    try {
-      setLoading(true);
-      setError("");
-
-      if (!workspaceId) {
-        setError("Workspace ID is missing.");
-        return;
-      }
-
-      const response = await getWorkspace(workspaceId);
-
-      setWorkspace(response.workspace);
-
-      const projectsResponse = await getWorkspaceProjects(workspaceId);
-
-      const fetchedProjects = projectsResponse.projects || [];
-
-      setProjects([...fetchedProjects].sort(byCreatedAtAscending));
-    } catch (error) {
-      console.error("Failed to fetch workspace:", getErrorDetails(error));
-
-      setError(getErrorMessage(error, "Failed to load workspace."));
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    fetchWorkspace();
+    let active = true;
+    Promise.all([getWorkspace(workspaceId), getWorkspaceProjects(workspaceId)])
+      .then(([response, projectsResponse]) => {
+        if (!active) return;
+        setWorkspace(response.workspace);
+        setProjects([...(projectsResponse.projects || [])].sort(byCreatedAtAscending));
+        setError("");
+      })
+      .catch(error => {
+        if (active) setError(getErrorMessage(error, "Failed to load workspace."));
+      })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
   }, [workspaceId]);
   useEffect(() => {
     const loadFiles = async () => {

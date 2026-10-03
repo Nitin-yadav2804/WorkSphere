@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { X } from "lucide-react";
 import { toast } from "sonner";
 
-import { toUTCDateInput } from "../utils/dates.js";
+import { toUTCDateInput, toOptionalISODate } from "../utils/dates.js";
 import AsyncButton from "./ui/AsyncButton.jsx";
 import { editProjectSchema as projectSchema } from "../validators/project.js";
 import ModalFrame from "./ui/ModalFrame.jsx";
@@ -49,8 +49,8 @@ function EditProjectModal({ project, onClose, onUpdated }) {
         name: data.name,
         description: data.description || "",
         status: data.status,
-        startDate: data.startDate || undefined,
-        dueDate: data.dueDate || undefined,
+        startDate: toOptionalISODate(data.startDate) || null,
+        dueDate: toOptionalISODate(data.dueDate) || null,
       });
 
       toast.success("Project updated successfully.");

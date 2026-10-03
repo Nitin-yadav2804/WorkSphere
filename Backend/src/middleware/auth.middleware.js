@@ -1,31 +1,27 @@
 import jwt from "jsonwebtoken";
+import mongoose from "mongoose";
+import User from "../models/user.model.js";
 
-const authMiddleware = (req, res, next) => {
+const authMiddleware = async (req, res, next) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith("Bearer ")) {
+        return res.status(401).json({ success: false, message: "Authentication required" });
+    }
+    let decoded;
     try {
-        const authHeader = req.headers.authorization;
-
-        if (!authHeader || !authHeader.startsWith("Bearer ")) {
-            return res.status(401).json({
-                success: false,
-                message: "Authentication required",
-            });
-        }
-
-        const token = authHeader.split(" ")[1];
-
-        const decoded = jwt.verify(
-            token,
-            process.env.JWT_SECRET
-        );
-
-        req.user = decoded;
-
+        decoded = jwt.verify(authHeader.slice(7), process.env.JWT_SECRET);
+        if (!mongoose.isValidObjectId(decoded.userId)) throw new Error("Invalid subject");
+    } catch {
+        return res.status(401).json({ success: false, message: "Invalid or expired token" });
+    }
+    try {
+        const user = await User.findById(decoded.userId).select("role isActive");
+        if (!user) return res.status(401).json({ success: false, message: "Account no longer exists" });
+        if (!user.isActive) return res.status(403).json({ success: false, message: "Your account has been deactivated" });
+        req.user = { ...decoded, role: user.role };
         next();
     } catch (error) {
-        return res.status(401).json({
-            success: false,
-            message: "Invalid or expired token",
-        });
+        next(error);
     }
 };
 

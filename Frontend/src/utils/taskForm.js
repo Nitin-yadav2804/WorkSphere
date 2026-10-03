@@ -25,11 +25,11 @@ export const getTaskDefaultValues = (currentTask) => ({
   dueDate: formatDateInput(currentTask?.dueDate),
 });
 
-export const toTaskPayload = (data) => ({
+export const toTaskPayload = (data, { editing = false } = {}) => ({
   title: data.title.trim(),
   description: data.description.trim(),
-  assignedTo: data.assignedTo || undefined,
+  assignedTo: data.assignedTo || (editing ? "" : undefined),
   status: data.status,
   priority: data.priority,
-  dueDate: data.dueDate ? `${data.dueDate}T00:00:00.000Z` : undefined,
+  dueDate: data.dueDate ? `${data.dueDate}T00:00:00.000Z` : editing ? null : undefined,
 });

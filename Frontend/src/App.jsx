@@ -12,12 +12,14 @@ function App() {
   const token = useSelector((state) => state.auth.token);
 
   useEffect(() => {
+    let active = true;
     const loadProfile = async () => {
       if (!token) return;
 
       try {
         const response = await getProfile();
 
+        if (!active) return;
         dispatch(
           setCredentials({
             token,
@@ -27,11 +29,12 @@ function App() {
       } catch (error) {
         console.error("Failed to load profile:", getErrorDetails(error));
 
-        dispatch(logout());
+        if (active) dispatch(logout());
       }
     };
 
     loadProfile();
+    return () => { active = false; };
   }, [token, dispatch]);
 
   return (

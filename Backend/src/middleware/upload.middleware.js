@@ -1,4 +1,5 @@
 import multer from "multer";
+import AppError from "../utils/AppError.js";
 
 const allowedMimeTypes = [
     "image/jpeg",
@@ -16,7 +17,7 @@ const allowedMimeTypes = [
 
 const fileFilter = (req, file, cb) => {
     if (!allowedMimeTypes.includes(file.mimetype)) {
-        return cb(new Error("File type is not allowed"));
+        return cb(new AppError("File type is not allowed", 400));
     }
 
     cb(null, true);

@@ -86,7 +86,7 @@ function EditTaskModal({ task, workspaceId, onClose, onUpdated }) {
     try {
       setSubmitting(true);
 
-      const taskData = toTaskPayload(data);
+      const taskData = toTaskPayload(data, { editing: true });
 
       const response = await updateTask(task._id, taskData);
 
