@@ -73,7 +73,7 @@ router.get('/:kind/:id/image', asyncHandler(async (req, res) => {
     record,
     field
   } = await target(req);
-  if (!record[field]) throw new AppError('Image not found', 404);
+  if (!record[field]) return res.json({ url: null });
   if (process.env.STORAGE_PROVIDER === 'r2') return res.json({
     url: await getStorageUrl(record[field])
   });

@@ -222,7 +222,7 @@ function Activity() {
                 <select
                   value={selectedWorkspace}
                   onChange={handleWorkspaceChange}
-                  className="w-full appearance-none rounded-xl border border-slate-200 bg-white py-3 pl-10 pr-4 text-sm font-medium text-slate-700 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
+                  className="select-with-icon w-full appearance-none rounded-xl border border-slate-200 bg-white py-3 pl-10 pr-4 text-sm font-medium text-slate-700 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
                 >
                   {workspaces.map((workspace) => (
                     <option key={workspace._id} value={workspace._id}>
@@ -248,7 +248,7 @@ function Activity() {
                 <select
                   value={actionFilter}
                   onChange={handleActionChange}
-                  className="w-full appearance-none rounded-xl border border-slate-200 bg-white py-3 pl-10 pr-4 text-sm font-medium text-slate-700 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
+                  className="select-with-icon w-full appearance-none rounded-xl border border-slate-200 bg-white py-3 pl-10 pr-4 text-sm font-medium text-slate-700 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
                 >
                   <option value="">All activities</option>
 

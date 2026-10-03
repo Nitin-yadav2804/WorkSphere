@@ -9,6 +9,7 @@ import Message from '../models/message.model.js';
 import { authorizeScope, messageFilter } from '../services/chat.js';
 import { publish } from '../realtime/events.js';
 import AppError from '../utils/AppError.js';
+import { deleteConversation } from '../services/conversations.js';
 const router = express.Router();
 router.use(auth);
 router.get('/notifications', asyncHandler(async (req, res) => {
@@ -98,6 +99,10 @@ router.post('/conversations', asyncHandler(async (req, res) => {
   res.json({
     conversation
   });
+}));
+router.delete('/conversations/:id', asyncHandler(async (req, res) => {
+  await deleteConversation(req.params.id, req.user.userId);
+  res.json({ success: true });
 }));
 router.post('/chat/:kind/:id/read', asyncHandler(async (req, res) => {
   const {

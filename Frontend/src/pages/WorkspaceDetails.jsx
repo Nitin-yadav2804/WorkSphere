@@ -1,6 +1,4 @@
 import { getSocket, joinScope } from "../services/socket";
-import ProfileImage from "../components/ProfileImage";
-import { useSelector } from "react-redux";
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
@@ -56,7 +54,6 @@ import WorkspaceChat from "../components/WorkspaceChat";
 
 function WorkspaceDetails() {
   const { workspaceId } = useParams();
-  const viewer = useSelector(state => state.auth.user);
   const navigate = useNavigate();
 
   const [workspace, setWorkspace] = useState(null);
@@ -456,7 +453,7 @@ function WorkspaceDetails() {
                 className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-600"
               >
                 <Pencil size={16} />
-                Edit
+                Edit workspace
               </button>
 
               <button
@@ -468,14 +465,13 @@ function WorkspaceDetails() {
                 className="flex items-center gap-2 rounded-xl border border-red-200 bg-white px-4 py-2.5 text-sm font-semibold text-red-600 transition hover:bg-red-50"
               >
                 <Trash2 size={16} />
-                Delete
+                Delete workspace
               </button>
 
             </div>
           </div>
         </div>
 
-        <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-6"><ProfileImage kind="workspace" id={workspaceId} name={workspace.name} editable={String(workspace.owner?._id || workspace.owner) === String(viewer?._id || viewer?.id)} /></div>
 
         <div className="relative mt-6 rounded-2xl border border-slate-200 bg-white shadow-sm">
           <div className="rounded-t-2xl border-b border-slate-200 px-6 pt-2 sm:px-8">

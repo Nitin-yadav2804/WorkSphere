@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { Pencil, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { updateTask, getTask } from '../services/taskService';
 import { getErrorMessage } from '../utils/errors';
@@ -42,10 +43,30 @@ export default function TaskBoard({
     }
   };
   const selectClass = 'rounded-xl border border-slate-200 bg-white p-2 text-sm';
-  const card = task => <article key={task._id} draggable={!busy} onDragStart={e => {
-    e.dataTransfer.setData('text/plain', task._id);
-    e.dataTransfer.effectAllowed = 'move';
-  }} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"><button onClick={() => onOpen(task._id)} className="text-left font-semibold text-slate-900 hover:text-blue-600">{task.title}</button><p className="mt-1 line-clamp-2 text-sm text-slate-500">{task.description}</p><p className="mt-3 text-xs text-slate-500">{task.assignedTo?.name || 'Unassigned'} · {getPriorityLabel(task.priority)}{task.dueDate && ` · Due ${task.dueDate.slice(0, 10)}`}</p><div className="mt-3 flex flex-wrap items-center gap-2"><select aria-label={`Status for ${task.title}`} value={task.status} disabled={Boolean(busy)} onChange={e => move(task._id, e.target.value)} className={selectClass}>{statuses.map(s => <option key={s} value={s}>{getTaskStatusLabel(s)}</option>)}</select><button onClick={e => onEdit(e, task)} className="text-xs text-blue-600">Edit</button><button onClick={e => onDelete(e, task)} className="text-xs text-red-600">Delete</button>{busy === task._id && <span className="text-xs">Saving...</span>}</div></article>;
+  const card = task => (
+    <article key={task._id} draggable={view === 'board' && !busy}
+      onDragStart={e => {
+        e.dataTransfer.setData('text/plain', task._id);
+        e.dataTransfer.effectAllowed = 'move';
+      }}
+      className={`relative rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-blue-300 hover:shadow-md ${view === 'list' ? 'flex flex-col gap-4 md:flex-row md:items-center md:justify-between' : ''}`}>
+      <div className="min-w-0 flex-1">
+        <button type="button" onClick={() => onOpen(task._id)} className="text-left font-semibold text-slate-900 after:absolute after:inset-0 after:rounded-xl focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-blue-500">
+          {task.title}
+        </button>
+        <p className="mt-1 line-clamp-2 text-sm text-slate-500">{task.description}</p>
+        <p className="mt-3 text-xs text-slate-500">{task.assignedTo?.name || 'Unassigned'} · {getPriorityLabel(task.priority)}{task.dueDate && ` · Due ${task.dueDate.slice(0, 10)}`}</p>
+      </div>
+      <div className={`relative z-10 flex shrink-0 flex-wrap items-center gap-2 ${view === 'board' ? 'mt-3' : ''}`}>
+        <select aria-label={`Status for ${task.title}`} value={task.status} disabled={Boolean(busy)} onChange={e => move(task._id, e.target.value)} className={selectClass}>
+          {statuses.map(s => <option key={s} value={s}>{getTaskStatusLabel(s)}</option>)}
+        </select>
+        <button type="button" aria-label={`Edit ${task.title}`} title="Edit task" onClick={e => onEdit(e, task)} className="flex h-10 w-10 items-center justify-center rounded-xl border border-blue-100 bg-blue-50 text-blue-600 transition hover:bg-blue-100 focus-visible:outline-2 focus-visible:outline-blue-500"><Pencil size={17} /></button>
+        <button type="button" aria-label={`Delete ${task.title}`} title="Delete task" onClick={e => onDelete(e, task)} className="flex h-10 w-10 items-center justify-center rounded-xl border border-red-100 bg-red-50 text-red-600 transition hover:bg-red-100 focus-visible:outline-2 focus-visible:outline-red-500"><Trash2 size={17} /></button>
+        {busy === task._id && <span className="text-xs" role="status">Saving...</span>}
+      </div>
+    </article>
+  );
   return <section className="space-y-5 rounded-2xl border border-slate-200 bg-white p-6"><div className="flex items-center justify-between"><div><h2 className="text-lg font-bold">Project tasks</h2><p className="text-sm text-slate-500">{filtered.length} of {tasks.length} tasks</p></div><button onClick={onCreate} className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white">Create task</button></div><div className="flex flex-wrap gap-2"><input aria-label="Search tasks" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search tasks..." className={`${selectClass} grow`} /><select aria-label="Status filter" value={status} onChange={e => setStatus(e.target.value)} className={selectClass}><option value="">All statuses</option>{statuses.map(s => <option key={s} value={s}>{getTaskStatusLabel(s)}</option>)}</select><select aria-label="Priority filter" value={priority} onChange={e => setPriority(e.target.value)} className={selectClass}><option value="">All priorities</option>{['low', 'medium', 'high', 'urgent'].map(p => <option key={p} value={p}>{getPriorityLabel(p)}</option>)}</select><select aria-label="Assignee filter" value={assignee} onChange={e => setAssignee(e.target.value)} className={selectClass}><option value="">All assignees</option><option value="unassigned">Unassigned</option>{members.map(m => <option key={m._id} value={m._id}>{m.name}</option>)}</select><select aria-label="Due date filter" value={due} onChange={e => setDue(e.target.value)} className={selectClass}><option value="">Any due date</option><option value="overdue">Overdue</option><option value="today">Due today (UTC)</option></select><select aria-label="Task sorting" value={sort} onChange={e => setSort(e.target.value)} className={selectClass}><option value="oldest">Oldest first</option><option value="newest">Newest first</option><option value="due">Due date</option><option value="priority">Priority</option></select></div><div className="flex gap-2">{['list', 'board'].map(v => <button key={v} onClick={() => setView(v)} className={`rounded-xl px-4 py-2 text-sm ${view === v ? 'bg-blue-50 text-blue-600' : 'text-slate-500'}`}>{v === 'list' ? 'List' : 'Kanban board'}</button>)}</div>{view === 'board' ? <><p className="text-xs text-slate-500">Drag tasks between columns, or use the status selector.</p><div className="grid gap-4 lg:grid-cols-3">{statuses.map(s => <div key={s} onDragOver={e => e.preventDefault()} onDrop={e => {
           e.preventDefault();
           move(e.dataTransfer.getData('text/plain'), s);

@@ -1,1 +1,45 @@
 @import "tailwindcss";
+/* Shared native controls keep keyboard support and consistent browser sizing. */
+select:not([multiple]):not([size]) {
+  appearance: none;
+  -webkit-appearance: none;
+  min-height: 2.75rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.75rem;
+  background-color: #fff;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%2364758b' stroke-width='1.8' viewBox='0 0 24 24'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.8rem center;
+  padding: 0.625rem 2.5rem 0.625rem 0.875rem;
+  font-size: 0.875rem;
+  line-height: 1.4;
+  color: #334155;
+  cursor: pointer;
+  transition: border-color 150ms, box-shadow 150ms;
+}
+select:not([multiple]):not([size]):hover { border-color: #94a3b8; }
+select:focus-visible, .date-control:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+select:disabled { opacity: 0.55; cursor: not-allowed; }
+.date-control {
+  appearance: none;
+  -webkit-appearance: none;
+  display: block;
+  width: 100%;
+  min-width: 0;
+  height: 2.75rem;
+  box-sizing: border-box;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.75rem;
+  background: #fff;
+  padding: 0.625rem 0.875rem;
+  color: #334155;
+  font: inherit;
+  color-scheme: light;
+}
+.date-control::-webkit-date-and-time-value { text-align: left; }
+.date-control::-webkit-calendar-picker-indicator { cursor: pointer; opacity: 0.6; }
+
+select.select-with-icon:not([multiple]):not([size]) { padding-left: 2.5rem; }

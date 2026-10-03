@@ -22,7 +22,7 @@ function ImageView({
       const data = response.data;
       if (data.type.includes('json')) {
         const json = JSON.parse(await data.text());
-        if (active) setUrl(json.url);
+        if (active) setUrl(json.url || '');
       } else {
         objectUrl = URL.createObjectURL(data);
         if (active) setUrl(objectUrl);else URL.revokeObjectURL(objectUrl);

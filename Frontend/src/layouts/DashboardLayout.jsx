@@ -29,28 +29,12 @@ function DashboardLayout() {
 
   const navItems = [
     { name: `Notifications${unread ? ` (${unread})` : ""}`, path: "/notifications", icon: Bell },
-    { name: "Messages", path: "/messages", icon: MessageCircle },
+    { name: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
     { name: "Analytics", path: "/analytics", icon: BarChart3 },
-    {
-      name: "Dashboard",
-      path: "/dashboard",
-      icon: LayoutDashboard,
-    },
-    {
-      name: "Workspaces",
-      path: "/workspaces",
-      icon: Briefcase,
-    },
-    {
-      name: "Activity",
-      path: "/activity",
-      icon: Activity,
-    },
-    {
-      name: "Settings",
-      path: "/settings",
-      icon: Settings,
-    },
+    { name: "Workspaces", path: "/workspaces", icon: Briefcase },
+    { name: "Messages", path: "/messages", icon: MessageCircle },
+    { name: "Activity", path: "/activity", icon: Activity },
+    { name: "Settings", path: "/settings", icon: Settings },
   ];
 
   return (
@@ -104,7 +88,7 @@ function DashboardLayout() {
 
         {/* User section */}
         <div className="border-t border-slate-100 p-4">
-          <div className="mb-3 flex items-center gap-3 rounded-xl bg-slate-50 p-3">
+          <NavLink to="/settings" aria-label="Profile settings" className="mb-3 flex items-center gap-3 rounded-xl bg-slate-50 p-3 transition hover:bg-blue-50 focus-visible:outline-2 focus-visible:outline-blue-500">
             <ProfileImage id={user?._id || user?.id} name={user?.name} size="h-9 w-9" />
 
             <div className="min-w-0">
@@ -116,7 +100,7 @@ function DashboardLayout() {
                 {user?.email || ""}
               </p>
             </div>
-          </div>
+          </NavLink>
 
           <button
             onClick={handleLogout}
@@ -129,7 +113,7 @@ function DashboardLayout() {
       </aside>
 
       {/* Main content */}
-      <main className="ml-64 min-h-screen flex-1">
+      <main className="ml-64 min-h-screen min-w-0 flex-1">
         <Outlet />
       </main>
     </div>
