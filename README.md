@@ -1,679 +1,121 @@
 # WorkSphere
 
-WorkSphere is a full-stack project and task management application built using the MERN stack.
+**Plan projects, manage tasks, and collaborate in real time.**
 
-It provides authentication, workspace and member management, project and task management, task comments, activity tracking, a dashboard, and user settings.
+WorkSphere is a full-stack collaboration platform built with MongoDB, Express, React, and Node.js. It brings workspace membership, project planning, Kanban tasks, conversations, and shared files into one application, with Socket.IO for live updates and Cloudflare R2 for cloud file storage.
 
----
+## Features
 
-## 🚀 Features
+### Workspaces and projects
 
-### 🔐 Authentication
+- Create and manage workspaces, add registered users, and assign member or manager roles.
+- Organize projects with descriptions, statuses, start dates, and due dates.
+- Navigate workspace members, projects, files, and chat through tabs.
+- Switch between **Tasks**, **Files**, and **Chat** within a project.
 
-- User registration
-- User login
-- JWT-based authentication
-- Password hashing using bcrypt
-- Protected API routes
-- User profile retrieval
-- Update profile name and email
-- Change password
-- Authentication middleware
+### Tasks and discussions
 
-### 🏢 Workspace Management
+- Create, assign, edit, and delete tasks with due dates and four priority levels.
+- Work in a compact list or drag tasks across **Todo**, **In Progress**, and **Completed** Kanban columns.
+- Search, filter by status, priority, assignee, or due date, and sort tasks.
+- Open task cards to view details, with separate **Files** and **Comments** tabs.
+- Add, edit, and delete your comments, mention members, and receive live task and comment updates.
 
-- Create workspaces
-- View workspaces
-- View workspace details
-- Update workspaces
-- Delete workspaces
-- Workspace ownership
-- Add workspace members
-- Remove workspace members
-- Update member roles
-- Member and manager roles
+### Realtime collaboration
 
-### 📁 Project Management
+- Workspace and project group chats, plus direct conversations between workspace members.
+- Persisted message history with pagination, attachments, read receipts, typing indicators, and online presence.
+- Member mentions through an `@email` picker.
+- Direct-conversation deletion with confirmation; deletion removes messages for both participants while retaining shared workspace files.
+- Notification inbox with unread counts, filtering, and individual or bulk read actions.
+- Automatic room rejoining after reconnecting, with authentication and workspace access checks.
 
-Projects are organized inside workspaces.
+### Files and account settings
 
-- Create projects
-- View workspace projects
-- View project details
-- Update projects
-- Delete projects
-- Project description
-- Project status
-- Project start date
-- Project due date
+- Upload, access, and delete files attached to workspaces, projects, and tasks.
+- Cloudflare R2 storage with signed access URLs, or local storage for development.
+- File-type checks and a 10 MB upload limit.
+- Edit your name and email, change your password using your current password, and manage your profile picture.
+- Profile pictures support PNG, JPEG, and WebP up to 2 MB, with initials as a fallback.
 
-Supported project statuses:
+### Visibility and administration
 
-- Active
-- Completed
-- Archived
+- Dashboard with task progress, workspace and project totals, and recent work.
+- Workspace analytics with project completion, team workload, priority breakdowns, and overdue counts.
+- Activity feed filtered by workspace and action type, with live updates.
+- Separate admin portal for user roles and account status, workspace and project oversight, task details, comments, and activity.
 
-### ✅ Task Management
+## Tech stack
 
-Tasks are created inside projects and can be assigned to workspace members.
+| Layer | Technologies |
+| --- | --- |
+| Frontend | React, Vite, Tailwind CSS, Redux Toolkit, React Router |
+| Forms and UI | React Hook Form, Zod, Lucide React, Sonner |
+| API | Node.js, Express, Axios |
+| Database | MongoDB, Mongoose |
+| Authentication | JSON Web Tokens, bcrypt |
+| Realtime | Socket.IO, Socket.IO Client |
+| File storage | Cloudflare R2, AWS SDK for S3, Multer; local filesystem fallback |
+| Verification | Node.js test runner, ESLint, Vite production build |
 
-- Create tasks
-- View project tasks
-- View task details
-- Edit tasks
-- Delete tasks
-- Assign tasks to workspace members
-- Update task status
-- Update task priority
-- Set task due date
-- Add task descriptions
-- Track task creator
+## Architecture
 
-Supported task statuses:
-
-- Todo
-- In Progress
-- Completed
-
-Supported task priorities:
-
-- Low
-- Medium
-- High
-- Urgent
-
-### 💬 Task Comments
-
-Tasks include a comment system for collaboration.
-
-- Add comments
-- View comments
-- Edit comments
-- Delete comments
-- Display comment author
-- Display comment timestamp
-- Only comment owners can edit their comments
-- Only comment owners can delete their comments
-
-### 📈 Activity Tracking
-
-WorkSphere includes an activity tracking system for recording important actions performed within the application.
-
-Activities are associated with relevant users and workspaces.
-
-### 📊 Dashboard
-
-The dashboard provides an overview of the user's work.
-
-It displays:
-
-- Total workspaces
-- Total projects
-- Total tasks
-- Completed tasks
-- Task completion percentage
-- Todo task count
-- In-progress task count
-- Completed task count
-- Recent projects
-- Recent tasks
-
-The dashboard also provides navigation to relevant projects and tasks.
-
-### ⚙️ Settings
-
-The Settings page provides:
-
-- User profile information
-- User name
-- User email
-- User role
-- Edit profile name and email
-- Change password with current-password verification
-- Logout functionality
-
-### 📎 File Attachments
-
-- Upload files to workspaces, projects, and tasks
-- File metadata stored in MongoDB
-- MIME type and 10 MB size validation
-- Access checks before download or preview
-- Authorized file deletion for uploaders, workspace owners, and managers
-- Cloudflare R2 signed URLs through the backend
-
-### 💬 Realtime Collaboration
-
-- Socket.IO connection authenticated with the existing JWT
-- Live task comment create, edit, and delete events
-- Live workspace activity updates
-- Workspace online count and chat typing indicator
-- Live project task creation, editing, and deletion updates
-- Workspace chat with persisted messages
-- Direct messages between workspace members
-- Paginated conversation history and message read receipts
-- Chat attachments and member mentions
-- Notification inbox with unread counts, filters and live delivery
-- Profile pictures and workspace logos
-- Task search, filters, sorting and Kanban drag-and-drop
-- Workspace analytics with creation-date filters and team workload breakdowns
-- Project Tasks, Files and Chat tabs
-- Project chat with persisted messages
-- Workspace membership checks before joining realtime rooms
-
----
-
-## 🛠️ Tech Stack
-
-### Frontend
-
-- React
-- Vite
-- Tailwind CSS
-- Redux Toolkit
-- React Router
-- Axios
-- Lucide React
-- Sonner
-
-### Backend
-
-- Node.js
-- Express.js
-- MongoDB
-- Mongoose
-- JWT
-- bcrypt
-- Zod
-- CORS
-- Cookie Parser
-- Nodemon
-
-### Database
-
-- MongoDB Atlas
-
----
-
-## 🏗️ Architecture
-
-WorkSphere uses a separate frontend and backend architecture.
-
-```text
-WorkSphere
-│
-├── Frontend
-│   └── React + Vite
-│
-├── Backend
-│   └── Node.js + Express
-│
-└── MongoDB Atlas
+```mermaid
+flowchart LR
+    UI[React application] -->|REST API| API[Express API]
+    UI <-->|Live events| WS[Socket.IO]
+    API --> DB[(MongoDB)]
+    API --> Storage[Cloudflare R2 / Local storage]
+    API -->|Publish events| WS
 ```
 
-The frontend communicates with the backend through REST APIs.
+Express and Socket.IO share the HTTP server started in `Backend/src/app.js`. MongoDB stores users, workspace memberships, projects, tasks, comments, messages, conversations, notifications, activities, and file metadata. File contents live in the configured storage provider.
 
-```text
-React Frontend
-      │
-      │ Axios
-      ▼
-Express REST API
-      │
-      │ Mongoose
-      ▼
-MongoDB Atlas
-```
+The frontend uses shared API services, reusable UI components, and a shared chat component for workspace, project, and direct conversations. Socket subscriptions are scoped to authorized resources and cleaned up when no longer needed.
 
----
+### Access and data behavior
 
-## 📂 Project Structure
+- REST requests use a bearer token; socket connections authenticate with the same JWT.
+- Protected operations check workspace membership, ownership, roles, or resource ownership as appropriate.
+- Direct-message text is accessible to conversation participants who remain workspace members. **Chat attachments are workspace files** and remain visible through workspace file access.
+- Adding a member grants access immediately and generates an in-app notification; there is no email invitation acceptance flow.
+- Analytics date filters apply to task creation dates in UTC. Completion and overdue metrics reflect current task status and due dates.
 
-```text
-WorkSphere/
-│
-├── Frontend/
-│   └── src/
-│       ├── components/
-│       ├── pages/
-│       ├── services/
-│       ├── routes/
-│       ├── store/
-│       ├── App.jsx
-│       └── main.jsx
-│
-├── Backend/
-│   └── src/
-│       ├── config/
-│       ├── controllers/
-│       ├── middleware/
-│       ├── models/
-│       ├── routes/
-│       ├── validators/
-│       ├── utils/
-│       └── app.js
-│
-├── .gitignore
-└── README.md
-```
-
-### Frontend
-
-The frontend contains:
-
-- React pages
-- Reusable UI components
-- API service functions
-- Redux state management
-- Application routes
-- Task and comment components
-
-### Backend
-
-The backend contains:
-
-- REST API routes
-- Controllers
-- MongoDB models
-- Authentication middleware
-- Authorization middleware
-- Request validation
-- Error handling
-- Utility functions
-
----
-
-## 🔑 Authentication Flow
-
-WorkSphere uses JWT-based authentication.
-
-```text
-User
- │
- ├── Register
- │      ↓
- │   Password hashed with bcrypt
- │      ↓
- │   User stored in MongoDB
- │
- └── Login
-        ↓
-   Credentials verified
-        ↓
-   JWT generated
-        ↓
-   Token stored on frontend
-        ↓
-   Axios attaches JWT
-        ↓
-   Protected API request
-        ↓
-   Authentication middleware
-        ↓
-   Request processed
-```
-
-Authenticated requests use:
-
-```text
-Authorization: Bearer <token>
-```
-
----
-
-## 🔄 REST API
-
-Development API base URL:
-
-```text
-http://localhost:3000/api
-```
-
-### Authentication
-
-```text
-POST   /auth/register
-POST   /auth/login
-GET    /auth/profile
-PATCH  /auth/profile
-PATCH  /auth/password
-```
-
-### Workspaces
-
-```text
-GET    /workspaces
-POST   /workspaces
-
-GET    /workspaces/:workspaceId
-PATCH  /workspaces/:workspaceId
-DELETE /workspaces/:workspaceId
-```
-
-### Workspace Members
-
-```text
-GET    /workspaces/:workspaceId/members
-POST   /workspaces/:workspaceId/members
-
-PATCH  /workspaces/:workspaceId/members/:userId
-DELETE /workspaces/:workspaceId/members/:userId
-```
-
-### Projects
-
-```text
-GET    /workspaces/:workspaceId/projects
-POST   /workspaces/:workspaceId/projects
-
-GET    /projects/:projectId
-PATCH  /projects/:projectId
-DELETE /projects/:projectId
-```
-
-### Tasks
-
-```text
-GET    /projects/:projectId/tasks
-POST   /projects/:projectId/tasks
-
-GET    /tasks/:taskId
-PATCH  /tasks/:taskId
-DELETE /tasks/:taskId
-```
-
-### Comments
-
-```text
-GET    /tasks/:taskId/comments
-POST   /tasks/:taskId/comments
-
-PATCH  /comments/:commentId
-DELETE /comments/:commentId
-```
-
-### Files
-
-```text
-POST   /files/upload
-GET    /files/workspace/:workspaceId
-GET    /files/project/:projectId
-GET    /files/task/:taskId
-GET    /files/:fileId/access
-GET    /files/:fileId/download
-DELETE /files/:fileId
-```
-
-### Chat and Collaboration
-
-```text
-GET    /workspaces/:workspaceId/messages
-POST   /workspaces/:workspaceId/messages
-GET    /projects/:projectId/messages
-POST   /projects/:projectId/messages
-GET    /conversations
-POST   /conversations
-GET    /conversations/:conversationId/messages
-POST   /conversations/:conversationId/messages
-POST   /chat/:kind/:id/read
-GET    /notifications
-PATCH  /notifications/read
-GET    /workspaces/:workspaceId/analytics
-GET    /images/:kind/:id/image
-POST   /images/:kind/:id/image
-DELETE /images/:kind/:id/image
-```
-
-Socket.IO clients authenticate with the same JWT and join authorized `workspace:<workspaceId>` or `task:<taskId>` rooms. Chat messages and comment changes are persisted through the REST API and broadcast to connected members.
-
----
-
-## 🧩 Data Models
-
-The application currently uses the following MongoDB models:
-
-```text
-User
-Workspace
-Project
-Task
-Comment
-Activity
-File
-```
-
-Relationships:
-
-```text
-User
- │
- ├── Workspace Membership
- │
- ├── Activity
- │
- └── Comments
-        │
-        ▼
-Workspace
- │
- └── Projects
-       │
-       └── Tasks
-             │
-             └── Comments
-```
-
----
-
-## 🛡️ Validation and Error Handling
-
-The backend uses Zod for request validation.
-
-Validation is implemented for:
-
-- Authentication
-- Workspaces
-- Workspace members
-- Projects
-- Tasks
-- Comments
-- Files
-
-The backend also includes:
-
-- Custom `AppError`
-- Async request handling
-- Centralized error middleware
-- Consistent error responses
-
----
-
-## 🔒 Authorization
-
-Protected resources are checked using authentication and workspace membership.
-
-The application validates:
-
-- Authenticated users
-- Workspace ownership
-- Workspace membership
-- Workspace member roles
-- Project access
-- Task access
-- Task assignment
-- Comment ownership
-- File access and attachment ownership
-
-Task assignment also verifies that the assigned user belongs to the corresponding workspace.
-
----
-
-## 🎨 UI and UX
-
-The frontend follows a modern SaaS-style interface.
-
-### Design
-
-- Blue-based theme
-- Clean light backgrounds
-- Rounded cards
-- Subtle shadows
-- Responsive layouts
-- Consistent spacing
-- Modern typography
-- Reusable components
-
-### User Experience
-
-- Loading states
-- Consistent page loading states
-- Empty states
-- Error states
-- Toast notifications
-- Confirmation dialogs
-- Responsive task menus
-- Modal-based task creation
-- Modal-based task editing
-- Task details pages
-- Dashboard overview
-- File upload and preview components
-
----
-
-## 📱 Application Pages
-
-The current application includes:
-
-```text
-/login
-/register
-/dashboard
-/workspaces
-/workspaces/:workspaceId
-/projects/:projectId
-/tasks/:taskId
-/settings
-/activity
-/notifications
-/messages
-/analytics
-/admin/users
-/admin/workspaces
-/admin/projects
-/admin/tasks
-```
-
----
-
-## 🔄 Application Workflow
-
-```text
-Register / Login
-       ↓
-Dashboard
-       ↓
-Create Workspace
-       ↓
-Add Team Members
-       ↓
-Create Project
-       ↓
-Create Tasks
-       ↓
-Assign Tasks
-       ↓
-Manage Task Status & Priority
-       ↓
-Open Task Details
-       ↓
-Add / Edit / Delete Comments
-       ↓
-Track Activity
-       ↓
-Upload and preview workspace, project, and task files
-```
-
----
-
-## 🧠 Concepts Demonstrated
-
-This project demonstrates practical full-stack development concepts including:
-
-- MERN stack development
-- REST API architecture
-- JWT authentication
-- Password hashing
-- Express middleware
-- Role-based authorization
-- Request validation
-- Centralized error handling
-- MongoDB relationships
-- Mongoose population
-- CRUD operations
-- Protected API routes
-- Axios interceptors
-- Redux state management
-- React Router
-- React component architecture
-- Reusable modals
-- API integration
-- Loading and error handling
-- Consistent reusable frontend utilities
-- Cloudflare R2 object storage integration
-- Socket.IO realtime collaboration
-- Responsive UI development
-- SaaS dashboard architecture
-
----
-
-## ⚙️ Local Setup
+## Run locally
 
 ### Prerequisites
 
-Make sure you have:
+- Node.js 22.12 or newer and npm.
+- Git.
+- A running local MongoDB instance or a MongoDB Atlas connection string.
+- Cloudflare R2 credentials only if using R2 storage.
 
-- Node.js
-- npm
-- Git
-- MongoDB Atlas account
-
-### Clone Repository
+### 1. Clone and install
 
 ```bash
 git clone https://github.com/Nitin-yadav2804/WorkSphere.git
 cd WorkSphere
+npm ci --prefix Backend
+npm ci --prefix Frontend
 ```
 
-### Backend Setup
+### 2. Configure the backend
 
-```bash
-cd Backend
-npm install
-npm start
-```
+Create `Backend/.env`:
 
-Backend runs on:
-
-```text
-http://localhost:3000
-```
-
-### Environment Variables
-
-Create:
-
-```text
-Backend/.env
-```
-
-Add:
-
-```env
+```dotenv
 PORT=3000
-MONGO_URI=your_mongodb_connection_string
-JWT_SECRET=your_jwt_secret
+MONGO_URI=mongodb://127.0.0.1:27017/worksphere
+JWT_SECRET=replace_with_a_long_random_secret
 FRONTEND_URL=http://localhost:5173
+STORAGE_PROVIDER=local
+```
 
-# File storage (backend only)
+For MongoDB Atlas, replace `MONGO_URI` with your connection string. Local uploads are stored in `Backend/uploads`.
+
+To use Cloudflare R2, replace the storage setting and add these backend variables:
+
+```dotenv
 STORAGE_PROVIDER=r2
 R2_ACCOUNT_ID=your_cloudflare_account_id
 R2_ACCESS_KEY_ID=your_r2_access_key_id
@@ -681,77 +123,135 @@ R2_SECRET_ACCESS_KEY=your_r2_secret_access_key
 R2_BUCKET_NAME=your_r2_bucket_name
 ```
 
-Do not commit `.env` files to the repository.
+Keep `.env` files and credentials out of version control. R2 credentials belong only on the backend.
 
-### Frontend Setup
+### 3. Configure the frontend
 
-Open another terminal:
+The frontend defaults to `http://localhost:3000`. To use a different backend, create `Frontend/.env`:
+
+```dotenv
+VITE_API_URL=http://localhost:3000
+```
+
+Use the backend origin **without `/api` or a trailing slash**. The frontend appends `/api` for REST requests and uses the origin for Socket.IO.
+
+### 4. Start both applications
+
+In one terminal, from the repository root:
 
 ```bash
-cd Frontend
-npm install
-npm run dev
+npm start --prefix Backend
 ```
 
-Frontend runs on:
-
-```text
-http://localhost:5173
-```
-
-### Frontend API configuration
-
-For local development the frontend uses `http://localhost:3000` by default. Set `VITE_API_URL` when the API is hosted elsewhere.
-
-### Testing
+In a second terminal:
 
 ```bash
-cd Backend
-npm test
-
-cd ../Frontend
-npm test
-npm run build
+npm run dev --prefix Frontend
 ```
 
-The current test suites use mocks and do not require a live MongoDB connection.
+Open [WorkSphere locally](http://localhost:5173). The backend runs at [localhost:3000](http://localhost:3000), with REST endpoints under `/api`.
 
-### Deployment
+### Try the collaboration workflow
 
-The frontend is configured as a Vercel single-page application through `Frontend/vercel.json`. Set the Vercel project root to `Frontend` and configure `VITE_API_URL` with the deployed backend URL. Configure `FRONTEND_URL`, MongoDB, JWT, and R2 variables on the backend deployment. R2 credentials remain server-side and are never exposed to the frontend.
+1. Register two accounts in separate browser sessions.
+2. Create a workspace and add the second account as a member.
+3. Create a project, assign a task, and move it through the Kanban columns.
+4. Open the task to add a comment, mention a member, and upload a file.
+5. Send workspace, project, or direct messages and view live updates in the other session.
+6. Review notifications, activity, and analytics.
 
----
-
-## 🗄️ Database
-
-WorkSphere uses MongoDB Atlas with Mongoose.
+## Project structure
 
 ```text
-React
-  ↓
-Express
-  ↓
-Mongoose
-  ↓
-MongoDB Atlas
+WorkSphere/
+├── Backend/
+│   ├── src/
+│   │   ├── config/          # Database connection
+│   │   ├── controllers/     # Request handlers, including admin operations
+│   │   ├── middleware/      # Authentication, roles, uploads, and errors
+│   │   ├── models/          # Mongoose models
+│   │   ├── realtime/        # Socket server and event publishing
+│   │   ├── routes/          # REST endpoints
+│   │   ├── services/        # Shared collaboration logic
+│   │   ├── utils/           # Access checks, storage, and lifecycle helpers
+│   │   ├── validators/      # Request schemas
+│   │   └── app.js           # Express and Socket.IO startup
+│   └── tests/
+├── Frontend/
+│   ├── src/
+│   │   ├── components/      # Shared UI, forms, files, chat, and task board
+│   │   ├── hooks/           # Shared React hooks
+│   │   ├── layouts/         # User and admin layouts
+│   │   ├── pages/           # Application screens
+│   │   ├── routes/          # Routing and route guards
+│   │   ├── services/        # API and socket clients
+│   │   ├── store/           # Redux state
+│   │   └── utils/           # Shared formatting and UI helpers
+│   ├── tests/
+│   └── vercel.json          # SPA routing configuration
+└── README.md
 ```
 
----
+## API overview
 
-## 👨‍💻 Author
+All paths below are relative to `/api`. Protected endpoints require `Authorization: Bearer <token>`.
 
-**Nitin Yadav**
+| Area | Routes |
+| --- | --- |
+| Authentication | `/auth/register`, `/auth/login`, `/auth/profile`, `/auth/password` |
+| Workspaces and members | `/workspaces`, `/workspaces/:workspaceId`, `/workspaces/:workspaceId/members` |
+| Projects | `/workspaces/:workspaceId/projects`, `/projects/:projectId` |
+| Tasks and comments | `/projects/:projectId/tasks`, `/tasks/:taskId`, `/tasks/:taskId/comments`, `/comments/:commentId` |
+| Files | `/files/upload`, `/files/workspace/:workspaceId`, `/files/project/:projectId`, `/files/task/:taskId`, `/files/:fileId/access`, `/files/:fileId/download`, `/files/:fileId` |
+| Group chat | `/workspaces/:workspaceId/messages`, `/projects/:projectId/messages` |
+| Direct chat | `/conversations`, `/conversations/:id` (DELETE), `/conversations/:conversationId/messages` |
+| Read receipts | `/chat/:kind/:id/read` |
+| Notifications | `/notifications`, `/notifications/read` |
+| Activity and analytics | `/workspaces/:workspaceId/activities`, `/workspaces/:workspaceId/analytics` |
+| Profile pictures | `/images/user/:id/image` |
+| Administration | `/admin/*` |
 
-GitHub:
+Request methods, validation, and access requirements are defined in `Backend/src/routes` and the associated controllers and services.
 
-https://github.com/Nitin-yadav2804/WorkSphere
+## Tests and build
 
-## Collaboration details
+Run from the repository root:
 
-Workspace, project and direct chats reuse one chat component. History loads in pages of 50 messages. Attachments use the existing file provider and are visible in workspace files. Direct-message text is limited to participants who remain workspace members. Mentions use `@email` handles selected from workspace members. Member additions grant access immediately and create an in-app notification; email invitations are a future feature.
+```bash
+npm test --prefix Backend
+npm test --prefix Frontend
+npm run build --prefix Frontend
+```
 
-Profile pictures and workspace logos accept PNG, JPEG and WebP images up to 2 MB. Only the workspace owner can change its logo. Existing R2 configuration and storage-provider code remain unchanged.
+The test suites cover shared validation and UI helpers, authorization, chat isolation, notification delivery, conversation deletion, missing profile images, error responses, and local file cleanup. They use mocked database operations; local file lifecycle checks use the filesystem. These checks do not replace deployed browser testing or live R2 integration checks.
 
-Analytics date filters use task creation dates in UTC. Completion and overdue metrics reflect current task state. Task boards support dragging and a status selector for keyboard/touch use.
+The frontend also includes a lint command:
 
-New collections (`notifications` and `conversations`) and optional fields are created through Mongoose; existing workspace messages remain readable. Realtime rooms currently run in one backend process; multiple instances require an adapter as a later infrastructure task.
+```bash
+npm run lint --prefix Frontend
+```
+
+## Deployment configuration
+
+### Frontend
+
+The repository includes a Vercel SPA rewrite configuration in `Frontend/vercel.json`.
+
+- Project root: `Frontend`
+- Build command: `npm run build`
+- Output directory: `dist`
+- Environment variable: `VITE_API_URL`, set to the backend origin.
+
+### Backend
+
+The backend starts a persistent HTTP server with Socket.IO. Deploy it to a Node.js runtime that supports long-lived socket connections and run `node src/app.js` from `Backend` after installing dependencies.
+
+Set `MONGO_URI`, `JWT_SECRET`, `FRONTEND_URL`, and the storage variables on the backend. `FRONTEND_URL` must match the frontend's exact origin for REST CORS access. Use R2 for cloud uploads when local disk persistence is unavailable.
+
+Realtime room state currently lives in one backend process. A multi-instance deployment requires a shared Socket.IO adapter and appropriate connection routing. After deployment, verify login, reconnects, two-account collaboration, and file access against the deployed services.
+
+## Author
+
+Built by **Nitin Yadav**.
+
+[GitHub profile](https://github.com/Nitin-yadav2804) · [Repository](https://github.com/Nitin-yadav2804/WorkSphere)
