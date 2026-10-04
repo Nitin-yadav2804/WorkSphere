@@ -1,3 +1,4 @@
+import DetailTabs from "../components/ui/DetailTabs.jsx";
 import TaskBoard from "../components/TaskBoard";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
@@ -10,6 +11,8 @@ import {
   AlertTriangle,
   X,
   CheckSquare,
+  Files,
+  MessageCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -458,10 +461,21 @@ function ProjectDetails() {
           </div>
         </div>
 
-        <div role="tablist" aria-label="Project sections" className="mt-6 flex gap-8 rounded-t-2xl border-b border-slate-200 bg-white px-6">{[['tasks','Tasks',tasks.length],['files','Files',files.length],['chat','Chat',null]].map(([id,label,count]) => <button key={id} role="tab" aria-selected={activeTab === id} onClick={() => setActiveTab(id)} className={`border-b-2 px-1 py-4 text-sm font-semibold ${activeTab === id ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500'}`}>{label}{count !== null && <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-xs">{count}</span>}</button>)}</div>
+        <div className="relative mt-6 rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <DetailTabs
+            scope="project"
+            label="Project sections"
+            activeTab={activeTab}
+            onChange={setActiveTab}
+            tabs={[
+              { id: "tasks", label: "Tasks", icon: CheckSquare, count: tasks.length },
+              { id: "files", label: "Files", icon: Files, count: files.length },
+              { id: "chat", label: "Chat", icon: MessageCircle },
+            ]}
+          />
         {activeTab === 'files' && (
-        <div className="mt-8 rounded-xl border border-slate-200 bg-white">
-          <div className="flex flex-col gap-4 border-b border-slate-100 px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
+        <div role="tabpanel" id="project-panel-files" aria-labelledby="project-tab-files">
+          <div className="flex flex-col gap-4 border-b border-slate-100 px-6 py-6 sm:flex-row sm:items-center sm:justify-between sm:px-8">
             <div>
               <h2 className="text-lg font-bold text-slate-900">
                 Project files
@@ -481,7 +495,7 @@ function ProjectDetails() {
             />
           </div>
 
-          <div className="p-6">
+          <div className="p-6 sm:p-8">
             <FileList
               files={files}
               onDeleted={(fileId) =>
@@ -494,16 +508,17 @@ function ProjectDetails() {
         </div>
         )}
 
-        {activeTab === 'tasks' && <div className="mt-6"><TaskBoard tasks={tasks} onOpen={handleTaskClick} onCreate={() => setShowCreateTaskModal(true)} onEdit={handleEditTask} onDelete={handleDeleteTask} onChanged={task => setTasks(current => current.map(t => t._id === task._id ? task : t))} /></div>}
+        {activeTab === 'tasks' && <div role="tabpanel" id="project-panel-tasks" aria-labelledby="project-tab-tasks"><TaskBoard tasks={tasks} onOpen={handleTaskClick} onCreate={() => setShowCreateTaskModal(true)} onEdit={handleEditTask} onDelete={handleDeleteTask} onChanged={task => setTasks(current => current.map(t => t._id === task._id ? task : t))} /></div>}
 
         {activeTab === 'chat' && (
-        <div className="mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div role="tabpanel" id="project-panel-chat" aria-labelledby="project-tab-chat">
           <WorkspaceChat
             workspaceId={project.workspace?._id || project.workspace}
             projectId={project._id}
           />
         </div>
         )}
+        </div>
       </div>
 
       {showCreateTaskModal && (

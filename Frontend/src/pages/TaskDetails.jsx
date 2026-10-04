@@ -1,3 +1,4 @@
+import DetailTabs from "../components/ui/DetailTabs.jsx";
 import { getSocket, joinScope } from "../services/socket";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
@@ -412,13 +413,19 @@ function TaskDetails() {
           </div>
         </div>
 
-        <div className="mt-8 flex gap-2 border-b border-slate-200" role="tablist" aria-label="Task sections">
-          {[{ id: "files", label: "Files", icon: Files }, { id: "comments", label: "Comments", icon: MessageSquare }].map(({ id, label, icon: Icon }) => (
-            <button key={id} id={`task-tab-${id}`} type="button" role="tab" aria-selected={activeTab === id} aria-controls={`task-panel-${id}`} onClick={() => setActiveTab(id)} className={`flex items-center gap-2 border-b-2 px-5 py-3 text-sm font-semibold transition ${activeTab === id ? "border-blue-600 text-blue-600" : "border-transparent text-slate-500 hover:text-slate-900"}`}><Icon size={17} />{label}{id === "files" && <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs">{files.length}</span>}</button>
-          ))}
-        </div>
-        <div hidden={activeTab !== "files"} role="tabpanel" id="task-panel-files" aria-labelledby="task-tab-files" className="mt-6 w-full rounded-xl border border-slate-200 bg-white">
-          <div className="flex flex-col gap-4 border-b border-slate-100 px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
+        <div className="relative mt-6 rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <DetailTabs
+            scope="task"
+            label="Task sections"
+            activeTab={activeTab}
+            onChange={setActiveTab}
+            tabs={[
+              { id: "files", label: "Files", icon: Files, count: files.length },
+              { id: "comments", label: "Comments", icon: MessageSquare },
+            ]}
+          />
+        <div hidden={activeTab !== "files"} role="tabpanel" id="task-panel-files" aria-labelledby="task-tab-files">
+          <div className="flex flex-col gap-4 border-b border-slate-100 px-6 py-6 sm:flex-row sm:items-center sm:justify-between sm:px-8">
             <div>
               <h2 className="text-lg font-bold text-slate-900">Task files</h2>
 
@@ -439,7 +446,7 @@ function TaskDetails() {
             />
           </div>
 
-          <div className="p-6">
+          <div className="p-6 sm:p-8">
             <FileList
               files={files}
               onDeleted={(fileId) =>
@@ -453,6 +460,8 @@ function TaskDetails() {
 
         <div hidden={activeTab !== "comments"} role="tabpanel" id="task-panel-comments" aria-labelledby="task-tab-comments">
           <TaskComments workspaceId={getWorkspaceId()} taskId={taskId} />
+        </div>
+
         </div>
 
         {showEditModal && (

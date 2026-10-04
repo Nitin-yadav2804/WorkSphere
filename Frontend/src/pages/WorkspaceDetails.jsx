@@ -1,3 +1,4 @@
+import DetailTabs from "../components/ui/DetailTabs.jsx";
 import { getSocket, joinScope } from "../services/socket";
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
@@ -458,102 +459,21 @@ function WorkspaceDetails() {
 
 
         <div className="relative mt-6 rounded-2xl border border-slate-200 bg-white shadow-sm">
-          <div className="rounded-t-2xl border-b border-slate-200 px-6 pt-2 sm:px-8">
-            <div className="flex gap-8">
-              <button
-                type="button"
-                onClick={() => {
-                  setActiveTab("members");
-                  setOpenMenu(null);
-                }}
-                className={`cursor-pointer relative flex items-center gap-2 border-b-2 px-1 py-4 text-sm font-semibold transition ${
-                  activeTab === "members"
-                    ? "border-blue-600 text-blue-600"
-                    : "border-transparent text-slate-500 hover:text-slate-700"
-                }`}
-              >
-                <Users size={17} />
-                Members
-                <span
-                  className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
-                    activeTab === "members"
-                      ? "bg-blue-50 text-blue-600"
-                      : "bg-slate-100 text-slate-500"
-                  }`}
-                >
-                  {workspace.members?.length || 0}
-                </span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setActiveTab("projects");
-                  setOpenMenu(null);
-                }}
-                className={`cursor-pointer relative flex items-center gap-2 border-b-2 px-1 py-4 text-sm font-semibold transition ${
-                  activeTab === "projects"
-                    ? "border-blue-600 text-blue-600"
-                    : "border-transparent text-slate-500 hover:text-slate-700"
-                }`}
-              >
-                <FolderKanban size={17} />
-                Projects
-                <span
-                  className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
-                    activeTab === "projects"
-                      ? "bg-blue-50 text-blue-600"
-                      : "bg-slate-100 text-slate-500"
-                  }`}
-                >
-                  {projects.length}
-                </span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setActiveTab("files");
-                  setOpenMenu(null);
-                }}
-                className={`cursor-pointer relative flex items-center gap-2 border-b-2 px-1 py-4 text-sm font-semibold transition ${
-                  activeTab === "files"
-                    ? "border-blue-600 text-blue-600"
-                    : "border-transparent text-slate-500 hover:text-slate-700"
-                }`}
-              >
-                <Files size={17} />
-                Files
-                <span
-                  className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
-                    activeTab === "files"
-                      ? "bg-blue-50 text-blue-600"
-                      : "bg-slate-100 text-slate-500"
-                  }`}
-                >
-                  {files.length}
-                </span>
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setActiveTab("chat");
-                  setOpenMenu(null);
-                }}
-                className={`cursor-pointer relative flex items-center gap-2 border-b-2 px-1 py-4 text-sm font-semibold transition ${
-                  activeTab === "chat"
-                    ? "border-blue-600 text-blue-600"
-                    : "border-transparent text-slate-500 hover:text-slate-700"
-                }`}
-              >
-                <MessageCircle size={17} />
-                Chat
-              </button>
-            </div>
-          </div>
+          <DetailTabs
+            scope="workspace"
+            label="Workspace sections"
+            activeTab={activeTab}
+            onChange={(id) => { setActiveTab(id); setOpenMenu(null); }}
+            tabs={[
+              { id: "members", label: "Members", icon: Users, count: workspace.members?.length || 0 },
+              { id: "projects", label: "Projects", icon: FolderKanban, count: projects.length },
+              { id: "files", label: "Files", icon: Files, count: files.length },
+              { id: "chat", label: "Chat", icon: MessageCircle },
+            ]}
+          />
 
           {activeTab === "members" && (
-            <div>
+            <div role="tabpanel" id="workspace-panel-members" aria-labelledby="workspace-tab-members">
               <div className="flex flex-col gap-4 px-6 py-6 sm:flex-row sm:items-center sm:justify-between sm:px-8">
                 <div>
                   <h2 className="text-lg font-bold text-slate-900">
@@ -705,7 +625,7 @@ function WorkspaceDetails() {
           )}
 
           {activeTab === "projects" && (
-            <div>
+            <div role="tabpanel" id="workspace-panel-projects" aria-labelledby="workspace-tab-projects">
               <div className="flex flex-col gap-4 px-6 py-6 sm:flex-row sm:items-center sm:justify-between sm:px-8">
                 <div>
                   <h2 className="text-lg font-bold text-slate-900">
@@ -827,7 +747,7 @@ function WorkspaceDetails() {
           )}
 
           {activeTab === "files" && (
-            <div>
+            <div role="tabpanel" id="workspace-panel-files" aria-labelledby="workspace-tab-files">
               <div className="flex flex-col gap-4 px-6 py-6 sm:flex-row sm:items-center sm:justify-between sm:px-8">
                 <div>
                   <h2 className="text-lg font-bold text-slate-900">
@@ -860,7 +780,7 @@ function WorkspaceDetails() {
             </div>
           )}
 
-          {activeTab === "chat" && <WorkspaceChat workspaceId={workspaceId} />}
+          {activeTab === "chat" && <div role="tabpanel" id="workspace-panel-chat" aria-labelledby="workspace-tab-chat"><WorkspaceChat workspaceId={workspaceId} /></div>}
         </div>
       </div>
 
