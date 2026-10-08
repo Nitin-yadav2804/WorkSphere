@@ -69,7 +69,7 @@ flowchart LR
     API -->|Publish events| WS
 ```
 
-Express and Socket.IO share the HTTP server started in `Backend/src/app.js`. MongoDB stores users, workspace memberships, projects, tasks, comments, messages, conversations, notifications, activities, and file metadata. File contents live in the configured storage provider.
+Express and Socket.IO share the HTTP server started in `Backend/src/index.js`. MongoDB stores users, workspace memberships, projects, tasks, comments, messages, conversations, notifications, activities, and file metadata. File contents live in the configured storage provider.
 
 The frontend uses shared API services, reusable UI components, and a shared chat component for workspace, project, and direct conversations. Socket subscriptions are scoped to authorized resources and cleaned up when no longer needed.
 
@@ -177,7 +177,7 @@ WorkSphere/
 │   │   ├── services/        # Shared collaboration logic
 │   │   ├── utils/           # Access checks, storage, and lifecycle helpers
 │   │   ├── validators/      # Request schemas
-│   │   └── app.js           # Express and Socket.IO startup
+│   │   └── index.js           # Express and Socket.IO startup
 │   └── tests/
 ├── Frontend/
 │   ├── src/
@@ -246,7 +246,7 @@ The repository includes a Vercel SPA rewrite configuration in `Frontend/vercel.j
 
 ### Backend
 
-The backend starts a persistent HTTP server with Socket.IO. Deploy it to a Node.js runtime that supports long-lived socket connections and run `node src/app.js` from `Backend` after installing dependencies.
+The backend starts a persistent HTTP server with Socket.IO. Deploy it to a Node.js runtime that supports long-lived socket connections and run `node src/index.js` from `Backend` after installing dependencies.
 
 Set `MONGO_URI`, `JWT_SECRET`, `FRONTEND_URL`, and the storage variables on the backend. `FRONTEND_URL` must match the frontend's exact origin. Optional `FRONTEND_URLS` accepts a comma-separated list of additional origins for both REST and Socket.IO. Use R2 for cloud uploads when local disk persistence is unavailable.
 

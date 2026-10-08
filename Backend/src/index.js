@@ -1,6 +1,5 @@
 import { getAllowedOrigins } from "./config/origins.js";
 import "dotenv/config";
-import { createServer } from "node:http";
 import express from "express";
 import cors from "cors";
 import authRoutes from "./routes/auth.routes.js";
@@ -57,11 +56,10 @@ app.get("/", (req, res) => {
 
 app.use(errorMiddleware);
 
-const httpServer = createServer(app);
-initializeSocket(httpServer);
-
 await connectDB();
 
-httpServer.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
+
+initializeSocket(server);
